@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
 import Navbar from '../components/Navbar';
+import { API_URL } from '../apiConfig';
 
 const MAX_CHARS      = 280;
 const MAX_RAW_MB     = 10;
@@ -102,7 +103,7 @@ export default function Share() {
 
     useEffect(() => {
         if (!user?.uid) return;
-        fetch(`http://localhost:5000/api/user/${user.uid}`)
+        fetch(`${API_URL}/api/user/${user.uid}`)
             .then(r => r.json())
             .then(d => setRemaining(d?.user?.dailyLimit ?? 3))
             .catch(() => {});
@@ -186,7 +187,7 @@ export default function Share() {
         setPhase('sending');
 
         try {
-            const res  = await fetch('http://localhost:5000/api/tweet', {
+            const res  = await fetch('${API_URL}/api/tweet', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

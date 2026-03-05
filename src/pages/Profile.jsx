@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import TweetCard, { Avatar } from '../components/TweetCard';
 import Navbar from '../components/Navbar';
+import { API_URL } from '../apiConfig';
 
 const avatarColors = ['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#8b5cf6'];
 
@@ -23,7 +24,7 @@ function LikedTweetRow({ tweet, deviceId, onUnlike }) {
   const handleUnlike = async () => {
     setUnliking(true);
     try {
-      await fetch(`http://localhost:5000/api/like/${tweet._id}`, {
+      await fetch(`${API_URL}/api/like/${tweet._id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId }),
@@ -53,7 +54,7 @@ function LikedCommentRow({ comment, deviceId, onUnlike }) {
   const handleUnlike = async () => {
     setUnliking(true);
     try {
-      await fetch(`http://localhost:5000/api/like-comment/${comment._id}`, {
+      await fetch(`${API_URL}/api/like-comment/${comment._id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId }),
@@ -86,7 +87,7 @@ function SettingsModal({ user, profile, onClose, onSave }) {
   const [error, setError]         = useState('');
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/avatars')
+    fetch('${API_URL}/api/avatars')
       .then(r => r.json())
       .then(d => setAvatars(Array.isArray(d) ? d : []))
       .catch(() => {});
@@ -98,7 +99,7 @@ function SettingsModal({ user, profile, onClose, onSave }) {
     try {
       const body = { username: username.trim() };
       if (selectedAv) body.avatarUrl = selectedAv.url;
-      const res  = await fetch(`http://localhost:5000/api/user/${user.uid}`, {
+      const res  = await fetch(`${API_URL}/api/user/${user.uid}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -231,7 +232,7 @@ function UserListModal({ title, users, myDeviceId, myFollowingIds, onClose, onUn
   const handleUnfollow = async (targetId) => {
     setLoadingId(targetId);
     try {
-      await fetch('http://localhost:5000/api/follow', {
+      await fetch('${API_URL}/api/follow', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ followerId: myDeviceId, targetId }),
@@ -331,11 +332,11 @@ export default function Profile() {
   useEffect(() => {
     if (!user?.uid) return;
     Promise.all([
-      fetch(`http://localhost:5000/api/user/${user.uid}`).then(r => r.json()),
-      fetch(`http://localhost:5000/api/my-tweets/${user.uid}`).then(r => r.json()),
-      fetch(`http://localhost:5000/api/my-likes/${user.uid}`).then(r => r.json()),
-      fetch(`http://localhost:5000/api/liked-ids/${user.uid}`).then(r => r.json()),
-      fetch(`http://localhost:5000/api/following-ids/${user.uid}`).then(r => r.json()),
+      fetch(`${API_URL}/api/user/${user.uid}`).then(r => r.json()),
+      fetch(`${API_URL}/api/my-tweets/${user.uid}`).then(r => r.json()),
+      fetch(`${API_URL}/api/my-likes/${user.uid}`).then(r => r.json()),
+      fetch(`${API_URL}/api/liked-ids/${user.uid}`).then(r => r.json()),
+      fetch(`${API_URL}/api/following-ids/${user.uid}`).then(r => r.json()),
     ]).then(([profileData, tweetsData, likesData, idsData, followData]) => {
       setProfile(profileData?.user || null);
       setMyTweets(Array.isArray(tweetsData) ? tweetsData : []);
@@ -348,12 +349,12 @@ export default function Profile() {
   }, [user]);
 
   const openFollowers = async () => {
-    const data = await fetch(`http://localhost:5000/api/followers/${user.uid}`).then(r => r.json());
+    const data = await fetch(`${API_URL}/api/followers/${user.uid}`).then(r => r.json());
     setFollowerList(Array.isArray(data) ? data : []);
     setShowFollowers(true);
   };
   const openFollowing = async () => {
-    const data = await fetch(`http://localhost:5000/api/following/${user.uid}`).then(r => r.json());
+    const data = await fetch(`${API_URL}/api/following/${user.uid}`).then(r => r.json());
     setFollowingList(Array.isArray(data) ? data : []);
     setShowFollowing(true);
   };

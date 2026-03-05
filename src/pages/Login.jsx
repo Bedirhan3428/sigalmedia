@@ -4,6 +4,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
 import { Mail, Lock, AlertCircle } from 'lucide-react';
 import '../styles/auth.css';
+import { API_URL } from '../apiConfig';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -26,7 +27,7 @@ export default function Login() {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/init-user', {
+      const response = await fetch('${API_URL}/api/init-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId: userCredential.user.uid }),

@@ -4,6 +4,7 @@ import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/
 import { auth } from '../firebase';
 import { Mail, Lock, User, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import '../styles/auth.css';
+import { API_URL } from '../apiConfig';
 
 // ─── Şifre kuralları ──────────────────────────────
 const RULES = [
@@ -83,7 +84,7 @@ export default function Register() {
   const allChecked   = checkTerms && checkPrivacy && checkKvkk;
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/avatars')
+    fetch('${API_URL}/api/avatars')
       .then(r => r.json())
       .then(d => setAvatars(Array.isArray(d) ? d : []))
       .catch(() => {});
@@ -116,7 +117,7 @@ export default function Register() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await sendEmailVerification(userCredential.user);
 
-      const res = await fetch('http://localhost:5000/api/init-user', {
+      const res = await fetch('${API_URL}/api/init-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

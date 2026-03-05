@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Heart, MessageCircle, Trash2, ChevronUp, X, ZoomIn, UserPlus, UserCheck } from 'lucide-react';
 import CommentSection from './CommentSection';
+import { API_URL } from '../apiConfig';
 
 function timeAgo(date) {
     const diff = (Date.now() - new Date(date)) / 1000;
@@ -85,7 +86,7 @@ function FollowButton({ deviceId, authorId, followingIds, onFollowChange }) {
         setFollowing(newFollowing);
         setLoading(true);
         try {
-            await fetch('http://localhost:5000/api/follow', {
+            await fetch('${API_URL}/api/follow', {
                 method: newFollowing ? 'POST' : 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ followerId: deviceId, targetId: authorId }),
@@ -137,7 +138,7 @@ export default function TweetCard({ tweet, deviceId, likedTweetIds = [], likedCo
         setLikes(l => newLiked ? l + 1 : Math.max(0, l - 1));
         if (newLiked) { setBounce(true); setTimeout(() => setBounce(false), 400); }
         try {
-            await fetch(`http://localhost:5000/api/like/${tweet._id}`, {
+            await fetch(`${API_URL}/api/like/${tweet._id}`, {
                 method: newLiked ? 'POST' : 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ deviceId }),
@@ -149,7 +150,7 @@ export default function TweetCard({ tweet, deviceId, likedTweetIds = [], likedCo
         if (!window.confirm('Bu tweeti silmek istediğinden emin misin?')) return;
         setDeleting(true);
         try {
-            await fetch(`http://localhost:5000/api/tweet/${tweet._id}`, {
+            await fetch(`${API_URL}/api/tweet/${tweet._id}`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ deviceId }),

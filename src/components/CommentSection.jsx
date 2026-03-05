@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Send, Trash2, Heart } from 'lucide-react';
 import { Avatar } from './TweetCard';
+import { API_URL } from '../apiConfig';
+
 
 function timeAgo(date) {
   const diff = (Date.now() - new Date(date)) / 1000;
@@ -24,7 +26,7 @@ function CommentItem({ comment, deviceId, likedCommentIds, onDelete }) {
     setLikes(l => newLiked ? l + 1 : Math.max(0, l - 1));
     if (newLiked) { setBounce(true); setTimeout(() => setBounce(false), 400); }
     try {
-      await fetch(`http://localhost:5000/api/like-comment/${comment._id}`, {
+      await fetch(`${API_URL}/api/like-comment/${comment._id}`, {
         method: newLiked ? 'POST' : 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId }),
@@ -70,7 +72,7 @@ export default function CommentSection({ tweetId, deviceId, likedCommentIds = []
   const [error, setError]       = useState('');
 
   useEffect(() => {
-    fetch(`http://localhost:5000/api/comments/${tweetId}`)
+    fetch(`${API_URL}/api/comments/${tweetId}`)
       .then(r => r.json())
       .then(d => setComments(Array.isArray(d) ? d : []))
       .catch(() => {})
@@ -81,7 +83,7 @@ export default function CommentSection({ tweetId, deviceId, likedCommentIds = []
     if (!text.trim() || sending) return;
     setSending(true); setError('');
     try {
-      const res = await fetch(`http://localhost:5000/api/comment/${tweetId}`, {
+      const res = await fetch(`${API_URL}/api/comment/${tweetId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId, content: text.trim() }),
@@ -97,7 +99,7 @@ export default function CommentSection({ tweetId, deviceId, likedCommentIds = []
 
   const handleDelete = async (commentId) => {
     try {
-      await fetch(`http://localhost:5000/api/comment/${commentId}`, {
+      await fetch(`${API_URL}/api/comment/${commentId}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId }),
