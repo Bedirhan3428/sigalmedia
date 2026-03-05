@@ -27,7 +27,7 @@ export default function Login() {
         return;
       }
 
-      const response = await fetch('${API_URL}/api/init-user', {
+      const response = await fetch(`${API_URL}/api/init-user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId: userCredential.user.uid }),

@@ -84,7 +84,7 @@ export default function Register() {
   const allChecked   = checkTerms && checkPrivacy && checkKvkk;
 
   useEffect(() => {
-    fetch('${API_URL}/api/avatars')
+    fetch(`${API_URL}/api/avatars`)
       .then(r => r.json())
       .then(d => setAvatars(Array.isArray(d) ? d : []))
       .catch(() => {});
@@ -117,7 +117,7 @@ export default function Register() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await sendEmailVerification(userCredential.user);
 
-      const res = await fetch('${API_URL}/api/init-user', {
+      const res = await fetch(`${API_URL}/api/init-user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
