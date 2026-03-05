@@ -1,0 +1,503 @@
+/* ═══════════════════════════════════════════════════
+   AUTH.CSS — Lise Vitrini Giriş/Kayıt Ekranları
+   Dark · Glass · Mobile-first
+═══════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
+
+/* ─── Değişkenler ──────────────────────────────── */
+:root {
+  --auth-bg:        #05050a;
+  --auth-surface:   rgba(18, 18, 26, 0.88);
+  --auth-border:    rgba(99, 102, 241, 0.18);
+  --auth-border-2:  rgba(255, 255, 255, 0.06);
+  --auth-text:      #f1f1f5;
+  --auth-muted:     #71717a;
+  --auth-subtle:    #27272a;
+  --primary:        #6366f1;
+  --primary-hover:  #5254cc;
+  --primary-glow:   rgba(99, 102, 241, 0.35);
+  --danger:         #f43f5e;
+  --success:        #10b981;
+  --input-bg:       rgba(9, 9, 11, 0.8);
+  --font:           'Outfit', system-ui, sans-serif;
+  --radius:         14px;
+  --radius-sm:      9px;
+  --ease-out:       cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ─── Container ────────────────────────────────── */
+.auth-container {
+  min-height: 100vh;
+  min-height: 100dvh; /* iOS Safari address bar */
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Küçük ekranda üstten/alttan nefes */
+  padding: 20px 16px;
+  /* iPhone home bar + notch */
+  padding-top: max(20px, env(safe-area-inset-top));
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
+  background-color: var(--auth-bg);
+  background-image:
+    radial-gradient(ellipse 80% 60% at 20% -10%, rgba(99, 102, 241, 0.14) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 85% 110%, rgba(139, 92, 246, 0.10) 0%, transparent 55%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Ccircle cx='1' cy='1' r='0.8' fill='rgba(255,255,255,0.018)'/%3E%3C/svg%3E");
+  font-family: var(--font);
+  position: relative;
+  overflow: hidden;
+  /* iOS zoom engelle */
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Arka plan parıltısı */
+.auth-container::before {
+  content: '';
+  position: fixed;
+  top: -30%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(600px, 150vw);
+  height: min(600px, 150vw);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.07) 0%, transparent 70%);
+  pointer-events: none;
+  animation: bgPulse 8s ease-in-out infinite alternate;
+}
+
+@keyframes bgPulse {
+  from { opacity: 0.5; transform: translateX(-50%) scale(1); }
+  to   { opacity: 1;   transform: translateX(-50%) scale(1.15); }
+}
+
+/* ─── Box (kart) ───────────────────────────────── */
+.auth-box {
+  width: 100%;
+  max-width: 380px;
+  background: var(--auth-surface);
+  border: 1px solid var(--auth-border);
+  border-radius: 20px;
+  padding: 28px 20px 24px;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    0 32px 64px rgba(0, 0, 0, 0.55),
+    0 0 80px rgba(99, 102, 241, 0.06);
+  animation: boxIn 0.45s var(--ease-out) both;
+  /* Küçük ekranlarda tam genişlik hissi */
+  box-sizing: border-box;
+}
+
+@media (min-width: 420px) {
+  .auth-box { padding: 32px 28px 28px; }
+}
+
+@keyframes boxIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.97);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* Logo / Başlık */
+.auth-box h1,
+.auth-box h2 {
+  font-family: var(--font);
+  font-weight: 800;
+  color: var(--auth-text);
+  text-align: center;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.auth-box h1 { font-size: 1.5rem; margin-bottom: 20px; }
+.auth-box h2 { font-size: 1.25rem; margin-bottom: 4px; }
+
+@media (min-width: 380px) {
+  .auth-box h1 { font-size: 1.7rem; margin-bottom: 24px; }
+  .auth-box h2 { font-size: 1.4rem; }
+}
+
+/* ─── Input Grubu ──────────────────────────────── */
+.input-group {
+  position: relative;
+  margin-bottom: 11px;
+}
+
+.input-icon {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--auth-muted);
+  pointer-events: none;
+  transition: color 0.2s;
+}
+
+.input-group:focus-within .input-icon {
+  color: var(--primary);
+}
+
+.auth-input {
+  width: 100%;
+  padding: 12px 14px 12px 40px;
+  background: var(--input-bg);
+  border: 1px solid var(--auth-border-2);
+  border-radius: var(--radius-sm);
+  color: var(--auth-text);
+  font-family: var(--font);
+  /* iOS zoom: input font-size 16px altındaysa sayfa zoom yapar */
+  font-size: max(0.93rem, 16px);
+  font-weight: 500;
+  outline: none;
+  /* Tam genişlik — mobilde taşmasın */
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  -webkit-appearance: none;
+  appearance: none;
+  /* Dokunuş highlight'ı kaldır */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* input-group olmadan kullanılınca (sade inputlar) */
+form .auth-input:not(.input-group .auth-input) {
+  padding: 12px 14px;
+}
+
+.auth-input::placeholder {
+  color: #52525b;
+  font-weight: 400;
+}
+
+.auth-input:focus {
+  border-color: rgba(99, 102, 241, 0.55);
+  background: rgba(9, 9, 11, 0.95);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12), inset 0 1px 2px rgba(0,0,0,0.3);
+}
+.auth-input:focus::placeholder { color: #3f3f46; }
+
+/* Autofill renk düzeltme */
+.auth-input:-webkit-autofill,
+.auth-input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #09090b inset;
+  -webkit-text-fill-color: var(--auth-text);
+  caret-color: var(--auth-text);
+}
+
+/* ─── Buton ────────────────────────────────────── */
+.auth-btn {
+  display: block;
+  width: 100%;
+  padding: 13px 20px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  /* Mobil minimum dokunma alanı — Apple HIG: 44pt */
+  min-height: 48px;
+  transition: transform 0.15s var(--ease-out), box-shadow 0.2s, opacity 0.2s, background-color 0.2s;
+  position: relative;
+  overflow: hidden;
+  margin-top: 4px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  /* iOS buton görünümünü sıfırla */
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Varsayılan (primary) buton */
+.auth-btn:not([style]) {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.35);
+}
+.auth-btn:not([style]):hover:not(:disabled) {
+  background: var(--primary-hover);
+  box-shadow: 0 6px 28px rgba(99, 102, 241, 0.45);
+  transform: translateY(-1px);
+}
+
+.auth-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.auth-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Ripple */
+.auth-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.15) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.auth-btn:active::after { opacity: 1; }
+
+/* ─── space-y-4 (Login için) ───────────────────── */
+.space-y-4 > * + * { margin-top: 12px; }
+
+/* ─── Alert / Hata mesajı ──────────────────────── */
+.auth-box [class*="bg-red"],
+.auth-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(244, 63, 94, 0.1);
+  border: 1px solid rgba(244, 63, 94, 0.25);
+  color: #fca5a5;
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1.45;
+  margin-bottom: 16px;
+  animation: slideDown 0.25s var(--ease-out);
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Adım indikatörü ──────────────────────────── */
+.auth-step-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+.auth-step-dot {
+  height: 4px;
+  border-radius: 2px;
+  transition: all 0.3s var(--ease-out);
+}
+
+/* ─── Avatar Grid ──────────────────────────────── */
+.avatar-grid {
+  display: grid;
+  /* Küçük ekranda 5 sütun, biraz büyükte 6 */
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 2px 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #3f3f46 transparent;
+}
+
+@media (min-width: 360px) {
+  .avatar-grid { grid-template-columns: repeat(6, 1fr); }
+}
+
+.avatar-grid::-webkit-scrollbar        { width: 4px; }
+.avatar-grid::-webkit-scrollbar-track  { background: transparent; }
+.avatar-grid::-webkit-scrollbar-thumb  { background: #3f3f46; border-radius: 2px; }
+
+.avatar-option {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px solid #27272a;
+  background: #18181b;
+  padding: 0;
+  cursor: pointer;
+  overflow: hidden;
+  /* Minimum dokunma alanı */
+  min-width: 44px;
+  min-height: 44px;
+  transition: border-color 0.15s, transform 0.15s var(--ease-out), box-shadow 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (min-width: 380px) {
+  .avatar-option { min-width: unset; min-height: unset; }
+}
+
+.avatar-option:hover {
+  border-color: #6366f1;
+  transform: scale(1.08);
+}
+
+.avatar-option--selected {
+  border: 3px solid #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  transform: scale(1.05);
+}
+
+.avatar-option img { width: 100%; height: 100%; display: block; }
+
+/* ─── Avatar önizleme ──────────────────────────── */
+.avatar-preview {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid rgba(99, 102, 241, 0.6);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12), 0 8px 24px rgba(0,0,0,0.4);
+  overflow: hidden;
+  background: #18181b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: box-shadow 0.3s;
+  flex-shrink: 0;
+}
+
+@media (min-width: 380px) {
+  .avatar-preview { width: 72px; height: 72px; }
+}
+
+.avatar-preview:has(img) {
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.25), 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
+
+.avatar-preview-initial {
+  color: #52525b;
+  font-size: 24px;
+  font-weight: 800;
+  font-family: var(--font);
+}
+
+@media (min-width: 380px) {
+  .avatar-preview-initial { font-size: 28px; }
+}
+
+/* ─── Bağlantı metni ───────────────────────────── */
+.auth-link {
+  color: #818cf8;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.15s;
+  border-bottom: 1px solid rgba(129, 140, 248, 0.3);
+  padding-bottom: 1px;
+  -webkit-tap-highlight-color: transparent;
+}
+.auth-link:hover { color: #a5b4fc; border-bottom-color: rgba(165, 180, 252, 0.5); }
+
+/* ─── Yükleniyor spinner ───────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.auth-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+  vertical-align: middle;
+}
+
+/* ─── Divider ──────────────────────────────────── */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0;
+  color: var(--auth-muted);
+  font-size: 0.78rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--auth-border-2);
+}
+
+/* ─── Başarı mesajı ────────────────────────────── */
+.auth-success {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #6ee7b7;
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1.45;
+  margin-bottom: 16px;
+  animation: slideDown 0.25s var(--ease-out);
+}
+
+/* ─── Tüm ekran boyutları ──────────────────────── */
+
+/* Çok küçük ekranlar (iPhone SE, 320px) */
+@media (max-width: 359px) {
+  .auth-box {
+    padding: 22px 14px 20px;
+    border-radius: 14px;
+  }
+  .auth-box h1 { font-size: 1.35rem; }
+  .auth-box h2 { font-size: 1.15rem; }
+  .auth-btn    { min-height: 44px; font-size: 0.9rem; }
+  .auth-input  { padding: 11px 12px 11px 38px; }
+}
+
+/* Normal mobil (360–419px) */
+@media (min-width: 360px) and (max-width: 419px) {
+  .auth-box {
+    padding: 24px 18px 22px;
+  }
+}
+
+/* Büyük mobil / küçük tablet (420px+) */
+@media (min-width: 420px) {
+  .auth-box {
+    padding: 32px 28px 28px;
+    border-radius: 20px;
+  }
+  .auth-box h1 { font-size: 1.7rem; }
+  .auth-box h2 { font-size: 1.4rem; }
+}
+
+/* Tablet ve üzeri — ortalanmış kart */
+@media (min-width: 600px) {
+  .auth-container {
+    align-items: center;
+    padding: 32px 24px;
+  }
+  .auth-box {
+    max-width: 420px;
+  }
+}
+
+/* ─── Klavye açıkken scroll (iOS) ──────────────── */
+@supports (-webkit-touch-callout: none) {
+  .auth-container {
+    /* iOS keyboard resize: visual viewport kullan */
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* ─── Reduced motion ───────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .auth-box,
+  .auth-container::before { animation: none; }
+  .auth-btn,
+  .auth-input,
+  .avatar-option { transition: opacity 0.1s; }
+}
