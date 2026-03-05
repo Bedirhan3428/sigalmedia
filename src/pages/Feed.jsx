@@ -3,6 +3,7 @@ import { RefreshCw, Flame, Clock, Zap, Info, Users, TrendingUp } from 'lucide-re
 import { useAuth } from '../context/AuthContext';
 import TweetCard from '../components/TweetCard';
 import Navbar from '../components/Navbar';
+import { API_URL } from '../apiConfig';
 
 const avatarColors = ['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#8b5cf6'];
 
@@ -104,8 +105,8 @@ export default function Feed() {
   useEffect(() => {
     if (!user?.uid) return;
     Promise.all([
-      fetch(`http://localhost:5000/api/liked-ids/${user.uid}`).then(r => r.json()),
-      fetch(`http://localhost:5000/api/following-ids/${user.uid}`).then(r => r.json()),
+      fetch(`${API_URL}/api/liked-ids/${user.uid}`).then(r => r.json()),
+      fetch(`${API_URL}/api/following-ids/${user.uid}`).then(r => r.json()),
     ]).then(([likeData, followData]) => {
       setLikedTweetIds(likeData.tweetIds || []);
       setLikedCommentIds(likeData.commentIds || []);
@@ -115,7 +116,7 @@ export default function Feed() {
 
   const fetchBomb = useCallback(async () => {
     try {
-      const res  = await fetch('http://localhost:5000/api/bomb-tweet');
+      const res  = await fetch('${API_URL}/api/bomb-tweet');
       const data = await res.json();
       setBombTweet(data);
     } catch {}
@@ -125,9 +126,9 @@ export default function Feed() {
     isRefresh ? setRefreshing(true) : setLoading(true);
     try {
       let url;
-      if (tab === 'vitrin')        url = 'http://localhost:5000/api/feed';
-      else if (tab === 'new')      url = 'http://localhost:5000/api/feed/new';
-      else url = `http://localhost:5000/api/feed/following/${user?.uid}?sort=${followingSort}`;
+      if (tab === 'vitrin')        url = '${API_URL}/api/feed';
+      else if (tab === 'new')      url = '${API_URL}/api/feed/new';
+      else url = `${API_URL}/api/feed/following/${user?.uid}?sort=${followingSort}`;
 
       const res  = await fetch(url);
       const data = await res.json();
