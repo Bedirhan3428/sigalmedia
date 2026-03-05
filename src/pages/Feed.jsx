@@ -116,7 +116,7 @@ export default function Feed() {
 
   const fetchBomb = useCallback(async () => {
     try {
-      const res  = await fetch('${API_URL}/api/bomb-tweet');
+      const res  = await fetch(`${API_URL}/api/bomb-tweet`);
       const data = await res.json();
       setBombTweet(data);
     } catch {}
@@ -126,8 +126,8 @@ export default function Feed() {
     isRefresh ? setRefreshing(true) : setLoading(true);
     try {
       let url;
-      if (tab === 'vitrin')        url = '${API_URL}/api/feed';
-      else if (tab === 'new')      url = '${API_URL}/api/feed/new';
+      if (tab === 'vitrin')        url = `${API_URL}/api/feed`;
+      else if (tab === 'new')      url = `${API_URL}/api/feed/new`;
       else url = `${API_URL}/api/feed/following/${user?.uid}?sort=${followingSort}`;
 
       const res  = await fetch(url);

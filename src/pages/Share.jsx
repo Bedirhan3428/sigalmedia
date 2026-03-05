@@ -187,7 +187,7 @@ export default function Share() {
         setPhase('sending');
 
         try {
-            const res  = await fetch('${API_URL}/api/tweet', {
+            const res  = await fetch(`${API_URL}/api/tweet`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

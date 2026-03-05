@@ -86,7 +86,7 @@ function FollowButton({ deviceId, authorId, followingIds, onFollowChange }) {
         setFollowing(newFollowing);
         setLoading(true);
         try {
-            await fetch('${API_URL}/api/follow', {
+            await fetch(`${API_URL}/api/follow`, {
                 method: newFollowing ? 'POST' : 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ followerId: deviceId, targetId: authorId }),

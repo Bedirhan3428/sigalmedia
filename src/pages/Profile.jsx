@@ -87,7 +87,7 @@ function SettingsModal({ user, profile, onClose, onSave }) {
   const [error, setError]         = useState('');
 
   useEffect(() => {
-    fetch('${API_URL}/api/avatars')
+    fetch(`${API_URL}/api/avatars`)
       .then(r => r.json())
       .then(d => setAvatars(Array.isArray(d) ? d : []))
       .catch(() => {});
@@ -232,7 +232,7 @@ function UserListModal({ title, users, myDeviceId, myFollowingIds, onClose, onUn
   const handleUnfollow = async (targetId) => {
     setLoadingId(targetId);
     try {
-      await fetch('${API_URL}/api/follow', {
+      await fetch(`${API_URL}/api/follow`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ followerId: myDeviceId, targetId }),
