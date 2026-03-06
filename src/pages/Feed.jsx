@@ -60,15 +60,18 @@ function HowItWorks() {
       </button>
       {open && (
         <div className="how-body">
-          <p><strong>🏆 Hot Score Formülü</strong></p>
-          <code className="formula">Skor = (Beğeni×2 + Yorum + YorumBeğenisi) × 10 / (Saat ^ 1.5) × TakipçiBonusu</code>
-          <p>Her 10 dakikada yeniden hesaplanır.</p>
-          <p><strong>⭐ Takipçi Bonusu</strong></p>
-          <p>Her 10 takipçi için +%10 skor artışı, en fazla <strong>×2</strong> (100 takipçide).</p>
-          <p><strong>🎰 Rastgele Havuz</strong></p>
-          <p>En yüksek puanlı <strong>50 tweet</strong> havuza alınır, buradan <strong>rastgele 10 tweet</strong> seçilir.</p>
-          <p><strong>⭐ Yeni Tweet Avantajı</strong></p>
-          <p>Her tweet <strong>5 puan</strong> ile başlar.</p>
+          ​<h4>🚀 Keşfet’in Efendisi Olma Rehberi</h4>
+<p>Şigal Medya'da sesini tüm okula duyurmak sadece şans değil, biraz da strateji işi knk. İşte tweetlerini zirveye taşıyacak o gizli taktikler:</p>
+​<h4>⏱️ İlk Dakikalar Altın Değerinde</h4>
+<p>Tweetin paylaşıldığı ilk anlarda aldığın her beğeni ve yorum, puanını roketler. Zaman geçtikçe tweetin "sıcaklığı" düşer ve aşağılara iner. Bu yüzden herkesin telefonda olduğu teneffüs saatlerini iyi kolla!</p>
+​<h4>👥 Takipçi Gücünü Arkana Al</h4>
+<p>Daha çok takipçi, daha çok puan demek! Her 10 takipçin sana %10 ekstra puan kazandırır. 100 takipçiye ulaştığında ise attığın her tweet otomatik olarak 2 kat daha güçlü sayılır. Çevreni genişlet, zirveye yerleş.</p>
+​<h4>💬 Etkileşim Kur, Puanları Topla</h4>
+<p>Sadece kendi tweetine gelen beğeniler değil, altına yapılan yorumlar ve o yorumların aldığı beğeniler bile seni yukarı taşır. Arkadaşlarınla paslaş, etkileşimi yüksek tut!</p>
+​<h4>🎯 İlk 50’ye Gir, Piyangoyu Yakala</h4>
+<p>Sistem sürekli en yüksek puanlı 50 tweeti seçip bir havuzda toplar. Bu havuzdan rastgele 10 tweet ana sayfada parlar. Yani en tepede olmana gerek yok, "En İyiler" arasına girmeyi başarman yeterli!</p>
+​<h4>✨ Her Tweet Yeni Bir Şans</h4>
+<p>Eski tweetin tutmadı diye üzülme. Attığın her yeni tweet, sistem tarafından 5 bonus puanla ödüllendirilerek başlar. Pes etme, bir sonraki tweetin okulun gündemi olabilir!</p>
         </div>
       )}
     </div>
