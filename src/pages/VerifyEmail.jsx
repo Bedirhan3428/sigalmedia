@@ -4,6 +4,7 @@ import { auth } from '../firebase';
 import { reload } from 'firebase/auth';
 import { Mail, CheckCircle2, RefreshCw, LogIn } from 'lucide-react';
 import '../styles/auth.css';
+import { fontWeight } from 'html2canvas/dist/types/css/property-descriptors/font-weight';
 
 
 export default function VerifyEmail() {
