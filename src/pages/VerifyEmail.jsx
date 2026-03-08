@@ -4,7 +4,7 @@ import { auth } from '../firebase';
 import { reload } from 'firebase/auth';
 import { Mail, CheckCircle2, RefreshCw, LogIn } from 'lucide-react';
 import '../styles/auth.css';
-import { fontWeight } from 'html2canvas/dist/types/css/property-descriptors/font-weight';
+
 
 export default function VerifyEmail() {
   const [checking, setChecking] = useState(false);
@@ -26,8 +26,8 @@ export default function VerifyEmail() {
       await reload(user);
 
       if (user.emailVerified) {
-        setStatus({ type: 'success', msg: 'Mail doğrulandı! Giriş sayfasına yönlendiriliyorsun...' });
-        setTimeout(() => navigate('/login'), 1800);
+        setStatus({ type: 'success', msg: 'Mail doğrulandı! Ana sayfaya yönlendiriliyorsun...' });
+        setTimeout(() => navigate('/'), 1800);
       } else {
         setStatus({ type: 'error', msg: 'Mail henüz doğrulanmamış. Gelen kutunu kontrol et.' });
       }
@@ -61,7 +61,7 @@ export default function VerifyEmail() {
           Kayıt olduğun mail adresine bir doğrulama linki gönderdik.
         </p>
         <p style={{ color: '#52525b', fontSize: '12px', marginBottom: '24px' }}>
-          Gelen kutunu <p style={{ fontWeight: 'bold', color: '#cacaca' }}>(ve spam klasörünü)</p> kontrol et, linke tıkladıktan sonra aşağıdaki butona bas.
+          Gelen kutunu ve<p style={{ fontWeight: 'bold', color: '#cacaca' }}>spam klasörünü</p> kontrol et, linke tıkladıktan sonra aşağıdaki butona bas.
         </p>
 
         {status.msg && (
