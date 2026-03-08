@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import { createUserWithEmailAndPassword, sendEmailVerification, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { auth } from '../firebase';
 import { Mail, Lock, User, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import '../styles/auth.css';
@@ -59,6 +59,19 @@ function PasswordRules({ password, touched }) {
   );
 }
 
+// ─── Renkli Google SVG ikonu ──────────────────────
+function GoogleIcon({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" style={{ display: 'block', flexShrink: 0 }}>
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      <path fill="none" d="M0 0h48v48H0z"/>
+    </svg>
+  );
+}
+
 export default function Register() {
   const [step, setStep]             = useState(1);
   const [email, setEmail]           = useState('');
@@ -72,6 +85,7 @@ export default function Register() {
   const [selectedAv, setSelectedAv] = useState(null);
   const [status, setStatus]         = useState({ type: '', msg: '' });
   const [loading, setLoading]       = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   // Onay kutuları
   const [checkTerms,   setCheckTerms]   = useState(false);
@@ -142,6 +156,48 @@ export default function Register() {
       setStep(1);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleRegister = async () => {
+    if (!allChecked) {
+      setStatus({ type: 'error', msg: 'Google ile devam etmek için tüm sözleşmeleri onaylamalısın.' });
+      return;
+    }
+    setGoogleLoading(true);
+    setStatus({ type: '', msg: '' });
+    try {
+      const provider = new GoogleAuthProvider();
+      const userCredential = await signInWithPopup(auth, provider);
+      const user = userCredential.user;
+
+      const res = await fetch(`${API_URL}/api/init-user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deviceId:  user.uid,
+          username:  user.displayName?.split(' ')[0] || user.email?.split('@')[0] || 'kullanici',
+          avatarUrl: user.photoURL || null,
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setStatus({ type: 'error', msg: data.error || 'Google ile kayıt başarısız.' });
+        setGoogleLoading(false);
+        return;
+      }
+
+      navigate('/');
+    } catch (err) {
+      console.error(err);
+      if (err.code === 'auth/popup-closed-by-user') {
+        setStatus({ type: 'error', msg: 'Google girişi iptal edildi.' });
+      } else {
+        setStatus({ type: 'error', msg: 'Google ile giriş yapılamadı. Tekrar dene.' });
+      }
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -350,8 +406,32 @@ export default function Register() {
               <div style={{ flex: 1, height: '1px', backgroundColor: '#27272a' }} />
             </div>
 
+            {/* ── Google ile Kayıt Ol ── */}
+            <button
+              type="button"
+              onClick={handleGoogleRegister}
+              disabled={googleLoading}
+              className="auth-btn"
+              style={{
+                ...googleBtnStyle,
+                opacity: allChecked ? 1 : 0.45,
+                cursor: allChecked ? 'pointer' : 'not-allowed',
+              }}
+            >
+              {googleLoading ? (
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <span style={spinnerStyle} /> Bağlanıyor...
+                </span>
+              ) : (
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9 }}>
+                  <GoogleIcon size={18} />
+                  Google ile Kayıt Ol
+                </span>
+              )}
+            </button>
+
             <Link to="/login" style={{ textDecoration: 'none' }}>
-              <button type="button" className="auth-btn" style={secondaryBtnStyle}>
+              <button type="button" className="auth-btn" style={{ ...secondaryBtnStyle, marginTop: '8px' }}>
                 Hesabın var mı? Giriş Yap
               </button>
             </Link>
@@ -476,6 +556,31 @@ const dividerStyle = {
 const secondaryBtnStyle = {
   backgroundColor: 'transparent', color: '#a1a1aa',
   border: '1px solid #3f3f46', marginTop: 0,
+};
+
+const googleBtnStyle = {
+  width: '100%',
+  backgroundColor: '#18181b',
+  color: '#e4e4e7',
+  border: '1px solid #3f3f46',
+  borderRadius: '8px',
+  padding: '10px 16px',
+  fontSize: '14px',
+  fontWeight: 500,
+  cursor: 'pointer',
+  transition: 'background-color 0.2s, border-color 0.2s, opacity 0.2s',
+  marginTop: 0,
+  fontFamily: 'inherit',
+};
+
+const spinnerStyle = {
+  display: 'inline-block',
+  width: 15,
+  height: 15,
+  border: '2px solid #3f3f46',
+  borderTop: '2px solid #a1a1aa',
+  borderRadius: '50%',
+  animation: 'spin 0.7s linear infinite',
 };
 
 const legalLinkStyle = {
