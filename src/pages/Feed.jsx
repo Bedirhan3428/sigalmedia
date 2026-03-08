@@ -27,6 +27,7 @@ function BombTweet({ tweet }) {
   if (!tweet) return null;
   const ci = tweet.authorAvatar?.charCodeAt(0) % avatarColors.length || 0;
   const totalInteraction = (tweet.likes * 2) + (tweet.commentCount || 0);
+
   return (
     <div className="bomb-card">
       <div className="bomb-header">
@@ -36,12 +37,43 @@ function BombTweet({ tweet }) {
       </div>
       <div className="bomb-body">
         <div className="tweet-header" style={{ marginBottom: '0.5rem' }}>
-          <div className="tweet-avatar" style={{ backgroundColor: avatarColors[ci], width: 32, height: 32, fontSize: '0.85rem' }}>
-            {tweet.authorAvatar?.charAt(0) || '?'}
-          </div>
+
+          {/* ── Avatar: URL varsa resim, yoksa renkli harf ── */}
+          {tweet.authorAvatarUrl ? (
+            <img
+              src={tweet.authorAvatarUrl}
+              alt={tweet.authorAvatar}
+              style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }}
+            />
+          ) : (
+            <div
+              className="tweet-avatar"
+              style={{ backgroundColor: avatarColors[ci], width: 32, height: 32, fontSize: '0.85rem' }}
+            >
+              {tweet.authorAvatar?.charAt(0) || '?'}
+            </div>
+          )}
+
           <p className="tweet-author" style={{ fontSize: '0.8rem' }}>{tweet.authorAvatar}</p>
         </div>
+
         <p className="tweet-content" style={{ fontSize: '0.9rem' }}>{tweet.content}</p>
+
+        {/* ── Tweet görseli ── */}
+        {tweet.imageUrl && (
+          <img
+            src={tweet.imageUrl}
+            alt="tweet görseli"
+            style={{
+              width: '100%',
+              borderRadius: '12px',
+              marginTop: '0.5rem',
+              maxHeight: '300px',
+              objectFit: 'cover',
+            }}
+          />
+        )}
+
         <div className="bomb-stats">
           <span>❤️ {tweet.likes}</span>
           <span>💬 {tweet.commentCount || 0}</span>
