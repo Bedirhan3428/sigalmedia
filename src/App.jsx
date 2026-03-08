@@ -7,62 +7,56 @@ import Register from './pages/Register';
 import Feed from './pages/Feed';
 import Share from './pages/Share';
 import Profile from './pages/Profile';
-import VerifyEmail from './pages/VerifyEmail';
-import TermsOfService from './pages/TermsOfService';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import KVKK from './pages/Kvkk';
 import InstallBanner from './components/InstallBanner';
+
+// ── Yeni sayfalar ──────────────────────────────────────────────────────────
+import SafetyPage     from './pages/SafetyPage';
+import AdminDashboard from './pages/AdminDashboard';
 
 export default function App() {
   return (
     <AuthProvider>
       <Router>
         <Routes>
-          {/* Public routes */}
-          <Route path="/login"    element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          {/* Public */}
+          <Route path="/login"          element={<Login />} />
+          <Route path="/register"       element={<Register />} />
 
-          {/* Protected routes */}
-          <Route path="/" element={
-            <ProtectedRoute><Feed /></ProtectedRoute>
-          } />
-          <Route path="/share" element={
-            <ProtectedRoute><Share /></ProtectedRoute>
-          } />
-          <Route path="/profile" element={
-            <ProtectedRoute><Profile /></ProtectedRoute>
-          } />
-          <Route path="/verify-email" element={
-            <ProtectedRoute><VerifyEmail /></ProtectedRoute>
+          {/* Protected */}
+          <Route path="/" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
+          <Route path="/share" element={<ProtectedRoute><Share /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+
+          {/* Aegis & Admin — sadece yetkili kullanıcılara açık
+              Backend RBAC koruması zaten mevcut;
+              Frontend'de de ProtectedRoute ile temel auth kontrolü yap. */}
+          <Route path="/admin" element={
+            <ProtectedRoute><AdminDashboard /></ProtectedRoute>
           } />
 
-          <Route path="/install" element={<InstallBanner />} />
-
-          {/* Legal pages */}
-          <Route path="/terms-of-service" element={<TermsOfService />} />
+          {/* Herkese açık bilgi sayfaları */}
+          <Route path="/safety"         element={<SafetyPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          <Route path="/kvkk" element={<KVKK />} />
+          <Route path="/kvkk"           element={<KVKK />} />
+          <Route path="/install"        element={<InstallBanner />} />
 
-
-
-          {/* Legacy redirect */}
+          {/* Legacy */}
           <Route path="/vitrin" element={<Navigate to="/" replace />} />
         </Routes>
 
-          <footer style={{
-  marginTop: '32px',
-  paddingTop: '16px',
-  borderTop: '1px solid #27272a',
-  fontSize: '12px',
-  color: '#3f3f46',
-  textAlign: 'center',
-}}>
-         © 2026 Şigal Medya. Tüm hakları saklıdır.
+        <footer style={{
+          marginTop:   '32px',
+          paddingTop:  '16px',
+          borderTop:   '1px solid #27272a',
+          fontSize:    '12px',
+          color:       '#3f3f46',
+          textAlign:   'center',
+        }}>
+          © 2026 Şigal Medya. Tüm hakları saklıdır.
         </footer>
-
       </Router>
     </AuthProvider>
   );
 }
-
-

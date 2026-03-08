@@ -7,6 +7,7 @@ import { API_URL } from '../apiConfig';
 
 const avatarColors = ['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#8b5cf6'];
 
+// ─── Skeleton ─────────────────────────────────────────────────────────────
 function SkeletonCard() {
   return (
     <div className="tweet-card skeleton">
@@ -21,6 +22,7 @@ function SkeletonCard() {
   );
 }
 
+// ─── Bomb Tweet ───────────────────────────────────────────────────────────
 function BombTweet({ tweet }) {
   if (!tweet) return null;
   const ci = tweet.authorAvatar?.charCodeAt(0) % avatarColors.length || 0;
@@ -49,6 +51,7 @@ function BombTweet({ tweet }) {
   );
 }
 
+// ─── Nasıl Çalışır ────────────────────────────────────────────────────────
 function HowItWorks() {
   const [open, setOpen] = useState(false);
   return (
@@ -60,24 +63,25 @@ function HowItWorks() {
       </button>
       {open && (
         <div className="how-body">
-          ​<h4>🚀 Keşfet’in Efendisi Olma Rehberi</h4>
-<p>Şigal Medya'da sesini tüm okula duyurmak sadece şans değil, biraz da strateji işi knk. İşte tweetlerini zirveye taşıyacak o gizli taktikler:</p>
-​<h4>⏱️ İlk Dakikalar Altın Değerinde</h4>
-<p>Tweetin paylaşıldığı ilk anlarda aldığın her beğeni ve yorum, puanını roketler. Zaman geçtikçe tweetin "sıcaklığı" düşer ve aşağılara iner. Bu yüzden herkesin telefonda olduğu teneffüs saatlerini iyi kolla!</p>
-​<h4>👥 Takipçi Gücünü Arkana Al</h4>
-<p>Daha çok takipçi, daha çok puan demek! Her 10 takipçin sana %10 ekstra puan kazandırır. 100 takipçiye ulaştığında ise attığın her tweet otomatik olarak 2 kat daha güçlü sayılır. Çevreni genişlet, zirveye yerleş.</p>
-​<h4>💬 Etkileşim Kur, Puanları Topla</h4>
-<p>Sadece kendi tweetine gelen beğeniler değil, altına yapılan yorumlar ve o yorumların aldığı beğeniler bile seni yukarı taşır. Arkadaşlarınla paslaş, etkileşimi yüksek tut!</p>
-​<h4>🎯 İlk 50’ye Gir, Piyangoyu Yakala</h4>
-<p>Sistem sürekli en yüksek puanlı 50 tweeti seçip bir havuzda toplar. Bu havuzdan rastgele 10 tweet ana sayfada parlar. Yani en tepede olmana gerek yok, "En İyiler" arasına girmeyi başarman yeterli!</p>
-​<h4>✨ Her Tweet Yeni Bir Şans</h4>
-<p>Eski tweetin tutmadı diye üzülme. Attığın her yeni tweet, sistem tarafından 5 bonus puanla ödüllendirilerek başlar. Pes etme, bir sonraki tweetin okulun gündemi olabilir!</p>
+          <h4>🚀 Keşfet'in Efendisi Olma Rehberi</h4>
+          <p>Şigal Medya'da sesini tüm okula duyurmak sadece şans değil, biraz da strateji işi knk. İşte tweetlerini zirveye taşıyacak o gizli taktikler:</p>
+          <h4>⏱️ İlk Dakikalar Altın Değerinde</h4>
+          <p>Tweetin paylaşıldığı ilk anlarda aldığın her beğeni ve yorum, puanını roketler. Zaman geçtikçe tweetin "sıcaklığı" düşer ve aşağılara iner. Bu yüzden herkesin telefonda olduğu teneffüs saatlerini iyi kolla!</p>
+          <h4>👥 Takipçi Gücünü Arkana Al</h4>
+          <p>Daha çok takipçi, daha çok puan demek! Her 10 takipçin sana %10 ekstra puan kazandırır. 100 takipçiye ulaştığında ise attığın her tweet otomatik olarak 2 kat daha güçlü sayılır.</p>
+          <h4>💬 Etkileşim Kur, Puanları Topla</h4>
+          <p>Sadece kendi tweetine gelen beğeniler değil, altına yapılan yorumlar ve o yorumların aldığı beğeniler bile seni yukarı taşır.</p>
+          <h4>🎯 İlk 50'ye Gir, Piyangoyu Yakala</h4>
+          <p>Sistem sürekli en yüksek puanlı 50 tweeti seçip bir havuzda toplar. Bu havuzdan rastgele 10 tweet ana sayfada parlar.</p>
+          <h4>✨ Her Tweet Yeni Bir Şans</h4>
+          <p>Eski tweetin tutmadı diye üzülme. Attığın her yeni tweet 5 bonus puanla başlar. Pes etme!</p>
         </div>
       )}
     </div>
   );
 }
 
+// ─── Boş Following ────────────────────────────────────────────────────────
 function EmptyFollowing() {
   return (
     <div className="empty-state" style={{ padding: '2rem 1rem' }}>
@@ -90,33 +94,56 @@ function EmptyFollowing() {
   );
 }
 
+// ─── Boş Feed ─────────────────────────────────────────────────────────────
+function EmptyFeed({ tab }) {
+  if (tab === 'following') return <EmptyFollowing />;
+  return (
+    <div className="empty-state" style={{ padding: '3rem 1.5rem', textAlign: 'center' }}>
+      <p style={{ fontSize: '2.5rem', marginBottom: '12px' }}>🌵</p>
+      <p style={{ fontWeight: 700, fontSize: '1rem', color: '#e4e4e7', marginBottom: '6px' }}>
+        Henüz buralar çok sessiz...
+      </p>
+      <p style={{ fontSize: '0.85rem', color: '#71717a', lineHeight: 1.5 }}>
+        İlk tweeti sen at ve vitrini hareketlendir! 🔥
+      </p>
+    </div>
+  );
+}
+
+// ─── Ana Bileşen ──────────────────────────────────────────────────────────
 export default function Feed() {
   const user = useAuth();
-  const [tab, setTab]                       = useState('vitrin');
-  const [followingSort, setFollowingSort]   = useState('new');
-  const [tweets, setTweets]                 = useState([]);
-  const [bombTweet, setBombTweet]           = useState(null);
-  const [likedTweetIds, setLikedTweetIds]   = useState([]);
-  const [likedCommentIds, setLikedCommentIds] = useState([]);
-  const [followingIds, setFollowingIds]     = useState([]);
-  const [loading, setLoading]               = useState(true);
-  const [refreshing, setRefreshing]         = useState(false);
-  const [pullY, setPullY]                   = useState(0);
-  const [pulling, setPulling]               = useState(false);
+
+  const [tab,                    setTab]                    = useState('vitrin');
+  const [followingSort,          setFollowingSort]          = useState('new');
+  const [tweets,                 setTweets]                 = useState([]);
+  const [bombTweet,              setBombTweet]              = useState(null);
+  const [likedTweetIds,          setLikedTweetIds]          = useState([]);
+  const [likedCommentIds,        setLikedCommentIds]        = useState([]);
+  const [followingIds,           setFollowingIds]           = useState([]);
+  const [loading,                setLoading]                = useState(true);
+  const [refreshing,             setRefreshing]             = useState(false);
+  const [pullY,                  setPullY]                  = useState(0);
+  const [pulling,                setPulling]                = useState(false);
+
   let touchStartY = 0;
 
+  // ── Beğeni + takip ID'lerini çek ─────────────────────────────────────
   useEffect(() => {
     if (!user?.uid) return;
     Promise.all([
       fetch(`${API_URL}/api/liked-ids/${user.uid}`).then(r => r.json()),
       fetch(`${API_URL}/api/following-ids/${user.uid}`).then(r => r.json()),
-    ]).then(([likeData, followData]) => {
-      setLikedTweetIds(likeData.tweetIds || []);
-      setLikedCommentIds(likeData.commentIds || []);
-      setFollowingIds(followData.followingIds || []);
-    }).catch(() => {});
+    ])
+      .then(([likeData, followData]) => {
+        setLikedTweetIds(likeData.tweetIds   || []);
+        setLikedCommentIds(likeData.commentIds || []);
+        setFollowingIds(followData.followingIds || []);
+      })
+      .catch(() => {});
   }, [user]);
 
+  // ── Bomb tweet ───────────────────────────────────────────────────────
   const fetchBomb = useCallback(async () => {
     try {
       const res  = await fetch(`${API_URL}/api/bomb-tweet`);
@@ -125,18 +152,31 @@ export default function Feed() {
     } catch {}
   }, []);
 
+  // ── Ana feed fetch ────────────────────────────────────────────────────
   const fetchFeed = useCallback(async (isRefresh = false) => {
+    if (!user?.uid) return;
+
     isRefresh ? setRefreshing(true) : setLoading(true);
+
     try {
       let url;
-      if (tab === 'vitrin')        url = `${API_URL}/api/feed`;
-      else if (tab === 'new')      url = `${API_URL}/api/feed/new`;
-      else url = `${API_URL}/api/feed/following/${user?.uid}?sort=${followingSort}`;
+      if (tab === 'vitrin')      url = `${API_URL}/api/feed`;
+      else if (tab === 'new')    url = `${API_URL}/api/feed/new`;
+      else                       url = `${API_URL}/api/feed/following/${user.uid}?sort=${followingSort}`;
 
       const res  = await fetch(url);
+
+      // HTTP hata kontrolü
+      if (!res.ok) {
+        console.error('Feed fetch hatası:', res.status);
+        setTweets([]);
+        return;
+      }
+
       const data = await res.json();
       setTweets(Array.isArray(data) ? data : []);
-    } catch {
+    } catch (err) {
+      console.error('Feed fetch exception:', err);
       setTweets([]);
     } finally {
       setLoading(false);
@@ -144,17 +184,18 @@ export default function Feed() {
     }
   }, [tab, followingSort, user]);
 
-  useEffect(() => { fetchFeed(); }, [fetchFeed]);
+  useEffect(() => { fetchFeed(); },             [fetchFeed]);
   useEffect(() => { if (tab === 'vitrin') fetchBomb(); }, [tab, fetchBomb]);
 
-  const handleDelete = (id) => setTweets(prev => prev.filter(t => t._id !== id));
-
+  // ── Event handler'lar ─────────────────────────────────────────────────
+  const handleDelete       = (id)           => setTweets(prev => prev.filter(t => t._id !== id));
   const handleFollowChange = (targetId, isNowFollowing) => {
     setFollowingIds(prev =>
       isNowFollowing ? [...prev, targetId] : prev.filter(id => id !== targetId)
     );
   };
 
+  // ── Pull-to-refresh ───────────────────────────────────────────────────
   const onTouchStart = (e) => { touchStartY = e.touches[0].clientY; };
   const onTouchMove  = (e) => {
     const delta = e.touches[0].clientY - touchStartY;
@@ -162,11 +203,18 @@ export default function Feed() {
   };
   const onTouchEnd = () => {
     if (pullY > 50) fetchFeed(true);
-    setPullY(0); setPulling(false);
+    setPullY(0);
+    setPulling(false);
   };
 
   return (
-    <div className="page-container" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+    <div
+      className="page-container"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
+      {/* Pull-to-refresh indikatörü */}
       {pulling && (
         <div className="pull-indicator" style={{ height: pullY }}>
           <RefreshCw size={18} className={pullY > 50 ? 'spin' : ''} />
@@ -174,6 +222,7 @@ export default function Feed() {
         </div>
       )}
 
+      {/* Header */}
       <header className="page-header">
         <div className="header-title">
           <Flame size={18} color="#f97316" />
@@ -184,11 +233,12 @@ export default function Feed() {
         </button>
       </header>
 
+      {/* Tab'lar */}
       <div className="feed-tabs">
-        <button className={`feed-tab ${tab === 'vitrin' ? 'feed-tab--active' : ''}`} onClick={() => setTab('vitrin')}>
+        <button className={`feed-tab ${tab === 'vitrin'    ? 'feed-tab--active' : ''}`} onClick={() => setTab('vitrin')}>
           <Flame size={14} /> Vitrin
         </button>
-        <button className={`feed-tab ${tab === 'new' ? 'feed-tab--active' : ''}`} onClick={() => setTab('new')}>
+        <button className={`feed-tab ${tab === 'new'       ? 'feed-tab--active' : ''}`} onClick={() => setTab('new')}>
           <Clock size={14} /> Yeni
         </button>
         <button className={`feed-tab ${tab === 'following' ? 'feed-tab--active' : ''}`} onClick={() => setTab('following')}>
@@ -196,42 +246,62 @@ export default function Feed() {
         </button>
       </div>
 
+      {/* Following alt tab'ları */}
       {tab === 'following' && (
         <div className="feed-subtabs">
-          <button className={`feed-subtab ${followingSort === 'new' ? 'feed-subtab--active' : ''}`} onClick={() => setFollowingSort('new')}>
+          <button
+            className={`feed-subtab ${followingSort === 'new' ? 'feed-subtab--active' : ''}`}
+            onClick={() => setFollowingSort('new')}
+          >
             <Clock size={12} /> Yeni
           </button>
-          <button className={`feed-subtab ${followingSort === 'hot' ? 'feed-subtab--active' : ''}`} onClick={() => setFollowingSort('hot')}>
+          <button
+            className={`feed-subtab ${followingSort === 'hot' ? 'feed-subtab--active' : ''}`}
+            onClick={() => setFollowingSort('hot')}
+          >
             <TrendingUp size={12} /> Popüler
           </button>
         </div>
       )}
 
       <main>
+        {/* Vitrin'e özel üst kartlar */}
         {tab === 'vitrin' && <BombTweet tweet={bombTweet} />}
         {tab === 'vitrin' && <HowItWorks />}
 
-        {loading
-          ? Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)
-          : tweets.length === 0
-            ? tab === 'following'
-              ? <EmptyFollowing />
-              : <div className="empty-state"><p>🌵 Henüz hiç tweet yok!</p><p>İlk tweeti sen at.</p></div>
-            : tweets.map(tweet => (
-                <TweetCard
-                  key={tweet._id}
-                  tweet={tweet}
-                  deviceId={user?.uid}
-                  likedTweetIds={likedTweetIds}
-                  likedCommentIds={likedCommentIds}
-                  followingIds={followingIds}
-                  onDelete={handleDelete}
-                  onFollowChange={handleFollowChange}
-                />
-              ))
-        }
+        {/* Tweet listesi */}
+        {loading ? (
+          // Skeleton yükleme
+          Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)
+        ) : tweets.length === 0 ? (
+          // Boş durum
+          <EmptyFeed tab={tab} />
+        ) : (
+          // ── TweetCard listesi ──────────────────────────────────────────
+          // Tüm prop'lar eksiksiz aktarılıyor:
+          //   tweet          → tweet objesi
+          //   deviceId       → kullanıcının uid'i
+          //   likedTweetIds  → beğenilen tweet id'leri (kalp durumu için)
+          //   likedCommentIds→ beğenilen yorum id'leri
+          //   followingIds   → takip edilen kullanıcı id'leri
+          //   onDelete       → tweet silinince feed'den kaldır
+          //   onFollowChange → takip değişince followingIds güncelle
+          tweets.map(tweet => (
+            <TweetCard
+              key={tweet._id}
+              tweet={tweet}
+              deviceId={user?.uid}
+              likedTweetIds={likedTweetIds}
+              likedCommentIds={likedCommentIds}
+              followingIds={followingIds}
+              onDelete={handleDelete}
+              onFollowChange={handleFollowChange}
+            />
+          ))
+        )}
       </main>
 
+      {/* Navbar yüksekliği kadar boşluk */}
       <div style={{ height: '80px' }} />
       <Navbar />
     </div>
