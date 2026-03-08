@@ -1,13 +1,105 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    ArrowLeft, Shield, ShieldAlert, ShieldCheck,
-    Radar, Users, Sword, CheckCircle, XCircle,
-    Lock, Eye, ChevronDown, ChevronUp, Loader2
+    ArrowLeft, Shield, Radar, Users, Sword,
+    CheckCircle, XCircle, Lock, Eye,
+    ChevronDown, ChevronUp
 } from 'lucide-react';
-import { API_URL } from '../apiConfig';
 
-// ─── Katman Kartı ─────────────────────────────────────────────────────────
+// ─── Static Aegis v3 Data ──────────────────────────────────────────────────
+const AEGIS_DATA = {
+    title: "AEGIS: Dijital Zırh Protokolü",
+    subtitle: "Sigal Media Topluluk Savunma Sistemi",
+    lastUpdated: "2026",
+    layers: [
+        {
+            id: 1,
+            name: "Sentinel Scan",
+            trigger: "PAYLAŞ butonuna basıldığı an",
+            description:
+                "Sen \"Paylaş\" butonuna bastığın an milisaniyeler içinde devreye girer. Metni sadece kelime bazlı değil, bağlam (context) olarak analiz eder — şakayla hakaret arasındaki farkı ayırt eder. Uygunsuz içeriği daha veri tabanına ulaşmadan karantinaya alır.",
+            blocks: [
+                "Nefret söylemi ve hedefli hakaretler",
+                "Kişisel bilgi ifşası (doxxing)",
+                "Açık tehdit ve yıldırma girişimleri",
+            ],
+            doesNotBlock: [
+                "Bağlamsal eleştiri ve sağlıklı tartışma",
+                "Kara mizah — şakayla hakaret ayrımı korunur",
+                "Akademik / bilgilendirici içerik",
+            ],
+        },
+        {
+            id: 2,
+            name: "Neural Pool",
+            trigger: "YORUM AKIŞI sürekli tarama",
+            description:
+                "Sadece paylaşımları değil, tüm yorum akışını 7/24 tarar. Tartışmanın alevlendiği veya toksikleştiği anları tespit ederek \"Aegis Onaylı\" güvenli limanlar oluşturur. Agresifleşen içerikleri otomatik olarak gizler ve topluluğun huzurunu korur.",
+            blocks: [
+                "Koordineli mobbing dizileri",
+                "Giderek tırmanan agresif yorum zincirleri",
+                "Toksik iğneleme ve duygusal manipülasyon",
+            ],
+            doesNotBlock: [
+                "Farklı görüşlerin saygılı ifadesi",
+                "Sert ama yapıcı geri bildirimler",
+                "Hızlı ve yüksek hacimli tartışmalar",
+            ],
+        },
+        {
+            id: 3,
+            name: "Military Audit",
+            trigger: "ŞÜPHELİ DURUM veya yoğun raporlama",
+            description:
+                "Sistemin en üst düzey analiz modudur. Şüpheli bir durum veya yoğun raporlama olduğunda tetiklenir. Bir içeriğin topluluk standartlarına uygunluğunu en ince ayrıntısına kadar denetler ve gerekirse \"Cihaz Parmak İzi\" üzerinden ihlal yapan erişimi kısıtlar.",
+            verdicts: {
+                safe: {
+                    icon: "✅",
+                    label: "CLEARED",
+                    outcome:
+                        "İçerik topluluk standartlarını karşılar. Hiçbir kısıtlama uygulanmaz, tam görünürlük korunur.",
+                },
+                flagged: {
+                    icon: "🚫",
+                    label: "RESTRICTED",
+                    outcome:
+                        "Cihaz Parmak İzi kaydedilir, erişim kısıtlanır. Kimlik ifşa edilmeksizin ihlal kayıt altına alınır.",
+                },
+            },
+            note: "Military Audit yalnızca ciddi vakalarda devreye girer; sıradan içerikler bu aşamaya ulaşmaz.",
+        },
+    ],
+    anonymity: {
+        title: "Anonimlik Kalkanı",
+        body: "Aegis seni korurken kim olduğunu sormaz. Kimliğin yalnızca sunucularımızda saklanan şifrelenmiş bir cihaz izidir — isim yok, e-posta yok. Aegis bir içeriği engellediğinde bile gerçek kimliğini kimse (biz dahil) göremez. Sen sadece bir GHOST veya SENTINEL'sin.",
+    },
+    rbac: {
+        title: "TOPLULUK ROLLERİ",
+        roles: [
+            {
+                name: "GHOST",
+                description:
+                    "Varsayılan anonim kullanıcı. Kimliğin tamamen gizlidir; içeriklerine yalnızca Aegis erişebilir, insan moderatörler göremez.",
+            },
+            {
+                name: "SENTINEL",
+                description:
+                    "Güvenilir topluluk üyesi. Raporlama yetkisi genişletilmiş, içerikleri Aegis kuyruğunda öncelikli incelenir.",
+            },
+            {
+                name: "WARDEN",
+                description:
+                    "Kıdemli moderatör. Military Audit sonuçlarını inceleme ve itiraz süreçlerini yönetme yetkisine sahiptir.",
+            },
+        ],
+    },
+    contact: {
+        title: "Güvenlik İhlali mi Bildirmek İstiyorsun?",
+        body: "Aegis'in gözden kaçırdığını düşündüğün bir durum varsa topluluk raporlama kanalını kullanabilirsin. Her rapor Military Audit modunu tetikler ve 24 saat içinde sonuçlandırılır. Kimliğin her aşamada korunur.",
+    },
+};
+
+// ─── Layer Card ────────────────────────────────────────────────────────────
 function LayerCard({ layer, index }) {
     const [expanded, setExpanded] = useState(false);
 
@@ -28,7 +120,6 @@ function LayerCard({ layer, index }) {
             background:   bg,
             transition:   'transform 0.2s',
         }}>
-            {/* Kart başlığı */}
             <button
                 onClick={() => setExpanded(v => !v)}
                 style={{
@@ -44,7 +135,6 @@ function LayerCard({ layer, index }) {
                     WebkitTapHighlightColor: 'transparent',
                 }}
             >
-                {/* Numara + ikon */}
                 <div style={{
                     position:       'relative',
                     width:           48,
@@ -61,16 +151,16 @@ function LayerCard({ layer, index }) {
                     {icons[index]}
                     <span style={{
                         position:   'absolute',
-                        top:         -6, right: -6,
-                        width:       18, height: 18,
-                        borderRadius:'50%',
+                        top: -6, right: -6,
+                        width: 18, height: 18,
+                        borderRadius: '50%',
                         background:  color,
                         color:       '#09090b',
                         fontSize:    '10px',
                         fontWeight:  900,
                         display:     'flex',
                         alignItems:  'center',
-                        justifyContent:'center',
+                        justifyContent: 'center',
                         fontFamily:  "'DM Mono', monospace",
                     }}>
                         {layer.id}
@@ -95,7 +185,6 @@ function LayerCard({ layer, index }) {
                 }
             </button>
 
-            {/* Açılır içerik */}
             {expanded && (
                 <div style={{
                     padding:       '0 20px 20px',
@@ -109,11 +198,14 @@ function LayerCard({ layer, index }) {
                         {layer.description}
                     </p>
 
-                    {/* Engellenenler listesi */}
                     {layer.blocks?.length > 0 && (
                         <div>
-                            <p style={{ fontSize: '11px', fontWeight: 700, color: color, letterSpacing: '0.07em', textTransform: 'uppercase', fontFamily: "'DM Mono', monospace", marginBottom: '8px' }}>
-                                Blocks
+                            <p style={{
+                                fontSize: '11px', fontWeight: 700, color: color,
+                                letterSpacing: '0.07em', textTransform: 'uppercase',
+                                fontFamily: "'DM Mono', monospace", marginBottom: '8px',
+                            }}>
+                                Engellenir
                             </p>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                 {layer.blocks.map((b, i) => (
@@ -126,11 +218,14 @@ function LayerCard({ layer, index }) {
                         </div>
                     )}
 
-                    {/* Engellenmeyenler */}
                     {layer.doesNotBlock?.length > 0 && (
                         <div>
-                            <p style={{ fontSize: '11px', fontWeight: 700, color: '#34d399', letterSpacing: '0.07em', textTransform: 'uppercase', fontFamily: "'DM Mono', monospace", marginBottom: '8px' }}>
-                                Allowed
+                            <p style={{
+                                fontSize: '11px', fontWeight: 700, color: '#34d399',
+                                letterSpacing: '0.07em', textTransform: 'uppercase',
+                                fontFamily: "'DM Mono', monospace", marginBottom: '8px',
+                            }}>
+                                İzin Verilir
                             </p>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                 {layer.doesNotBlock.map((b, i) => (
@@ -143,7 +238,6 @@ function LayerCard({ layer, index }) {
                         </div>
                     )}
 
-                    {/* Karar sonuçları (Military Audit) */}
                     {layer.verdicts && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {Object.values(layer.verdicts).map((v, i) => (
@@ -169,7 +263,6 @@ function LayerCard({ layer, index }) {
                         </div>
                     )}
 
-                    {/* Note */}
                     {layer.note && (
                         <p style={{
                             fontSize: '12px', color: '#52525b', lineHeight: 1.55, margin: 0,
@@ -186,10 +279,10 @@ function LayerCard({ layer, index }) {
     );
 }
 
-// ─── RBAC Rol Kartı ───────────────────────────────────────────────────────
+// ─── Role Card ─────────────────────────────────────────────────────────────
 function RoleCard({ role, index }) {
-    const icons   = ['👤', '🛡️', '👑'];
-    const colors  = ['#71717a', '#818cf8', '#fbbf24'];
+    const icons  = ['👤', '🛡️', '👑'];
+    const colors = ['#71717a', '#818cf8', '#fbbf24'];
     return (
         <div style={{
             padding: '12px 14px', borderRadius: '10px',
@@ -208,19 +301,26 @@ function RoleCard({ role, index }) {
     );
 }
 
-// ─── Ana Safety Page ──────────────────────────────────────────────────────
-export default function SafetyPage() {
-    const navigate     = useNavigate();
-    const [data,    setData]    = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error,   setError]   = useState('');
+// ─── Divider ───────────────────────────────────────────────────────────────
+function SectionDivider({ label }) {
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+            <div style={{ flex: 1, height: '1px', background: '#18181b' }} />
+            <span style={{
+                fontSize: '10px', fontWeight: 700, color: '#3f3f46',
+                letterSpacing: '0.1em', fontFamily: "'DM Mono', monospace",
+            }}>
+                {label}
+            </span>
+            <div style={{ flex: 1, height: '1px', background: '#18181b' }} />
+        </div>
+    );
+}
 
-    useEffect(() => {
-        fetch(`${API_URL}/api/safety`)
-            .then(r => r.json())
-            .then(d => { setData(d); setLoading(false); })
-            .catch(() => { setError('Sayfa yüklenemedi.'); setLoading(false); });
-    }, []);
+// ─── Main Safety Page ──────────────────────────────────────────────────────
+export default function SafetyPage() {
+    const navigate = useNavigate();
+    const data = AEGIS_DATA;
 
     return (
         <div style={{
@@ -262,119 +362,106 @@ export default function SafetyPage() {
 
             <div style={{ maxWidth: '680px', margin: '0 auto', padding: '24px 16px 64px' }}>
 
-                {loading && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px', gap: '12px', color: '#52525b' }}>
-                        <Loader2 size={20} style={{ animation: 'spin 0.7s linear infinite' }} />
-                        <span>Yükleniyor...</span>
+                {/* ── Hero ── */}
+                <div style={{ textAlign: 'center', marginBottom: '36px', padding: '0 8px' }}>
+                    <div style={{
+                        width: 72, height: 72, borderRadius: '20px', margin: '0 auto 16px',
+                        background: 'rgba(99,102,241,0.1)', border: '2px solid rgba(99,102,241,0.25)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 0 40px rgba(99,102,241,0.15)',
+                    }}>
+                        <Shield size={36} color="#818cf8" />
                     </div>
-                )}
+                    <h1 style={{
+                        fontSize: '22px', fontWeight: 900, color: '#f4f4f5',
+                        letterSpacing: '-0.03em', margin: '0 0 8px',
+                    }}>
+                        {data.title}
+                    </h1>
+                    <p style={{ fontSize: '14px', color: '#71717a', margin: '0 0 20px' }}>
+                        {data.subtitle}
+                    </p>
 
-                {error && (
-                    <p style={{ color: '#fb7185', textAlign: 'center', padding: '40px' }}>{error}</p>
-                )}
+                    {/* Intro blurb */}
+                    <div style={{
+                        padding: '16px 18px', borderRadius: '14px',
+                        background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.15)',
+                        textAlign: 'left',
+                    }}>
+                        <p style={{ fontSize: '13.5px', color: '#a1a1aa', lineHeight: 1.7, margin: 0 }}>
+                            Sigal Media'da paylaşılan her kelime,{' '}
+                            <span style={{ color: '#818cf8', fontWeight: 700 }}>Aegis v3</span>{' '}
+                            yapay zeka çekirdeği tarafından korunur. Aegis bir moderasyon aracından fazlasıdır —
+                            lise ekosistemindeki zorbalığı, tacizi ve nefret söylemini{' '}
+                            <em>daha ekrana düşmeden</em> durdurmak için tasarlanmış,
+                            topluluğun huzurunu sağlayan otonom bir nöbetçidir.
+                        </p>
+                    </div>
+                </div>
 
-                {data && (
-                    <>
-                        {/* Hero */}
-                        <div style={{ textAlign: 'center', marginBottom: '36px', padding: '0 8px' }}>
-                            <div style={{
-                                width: 72, height: 72, borderRadius: '20px', margin: '0 auto 16px',
-                                background: 'rgba(99,102,241,0.1)', border: '2px solid rgba(99,102,241,0.25)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                boxShadow: '0 0 40px rgba(99,102,241,0.15)',
-                            }}>
-                                <Shield size={36} color="#818cf8" />
-                            </div>
-                            <h1 style={{
-                                fontSize: '22px', fontWeight: 900, color: '#f4f4f5',
-                                letterSpacing: '-0.03em', margin: '0 0 8px',
-                            }}>
-                                {data.title}
-                            </h1>
-                            <p style={{ fontSize: '14px', color: '#71717a', margin: 0 }}>
-                                {data.subtitle}
+                {/* ── Defense Layers ── */}
+                <div style={{ marginBottom: '32px' }}>
+                    <SectionDivider label="DEFENSE LAYERS" />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {data.layers.map((layer, i) => (
+                            <LayerCard key={layer.id} layer={layer} index={i} />
+                        ))}
+                    </div>
+                </div>
+
+                {/* ── Anonymity ── */}
+                <div style={{ marginBottom: '20px' }}>
+                    <SectionDivider label="PRIVACY & ANONYMITY" />
+                    <div style={{
+                        padding: '18px 20px', borderRadius: '14px',
+                        background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.2)',
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                            <Lock size={16} color="#a78bfa" />
+                            <p style={{ fontSize: '13px', fontWeight: 700, color: '#c4b5fd', margin: 0 }}>
+                                {data.anonymity.title}
                             </p>
                         </div>
-
-                        {/* Katmanlar */}
-                        <div style={{ marginBottom: '32px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-                                <div style={{ flex: 1, height: '1px', background: '#18181b' }} />
-                                <span style={{
-                                    fontSize: '10px', fontWeight: 700, color: '#3f3f46',
-                                    letterSpacing: '0.1em', fontFamily: "'DM Mono', monospace",
-                                }}>
-                                    DEFENSE LAYERS
-                                </span>
-                                <div style={{ flex: 1, height: '1px', background: '#18181b' }} />
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                {data.layers?.map((layer, i) => (
-                                    <LayerCard key={layer.id} layer={layer} index={i} />
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Anonimlik */}
-                        {data.anonymity && (
-                            <div style={{
-                                padding: '18px 20px', borderRadius: '14px', marginBottom: '20px',
-                                background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.2)',
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                    <Lock size={16} color="#a78bfa" />
-                                    <p style={{ fontSize: '13px', fontWeight: 700, color: '#c4b5fd', margin: 0 }}>
-                                        {data.anonymity.title}
-                                    </p>
-                                </div>
-                                <p style={{ fontSize: '13px', color: '#71717a', lineHeight: 1.65, margin: 0 }}>
-                                    {data.anonymity.body}
-                                </p>
-                            </div>
-                        )}
-
-                        {/* RBAC rolleri */}
-                        {data.rbac && (
-                            <div style={{ marginBottom: '20px' }}>
-                                <p style={{
-                                    fontSize: '11px', fontWeight: 700, color: '#52525b',
-                                    letterSpacing: '0.08em', textTransform: 'uppercase',
-                                    fontFamily: "'DM Mono', monospace", marginBottom: '12px',
-                                }}>
-                                    {data.rbac.title}
-                                </p>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    {data.rbac.roles?.map((role, i) => (
-                                        <RoleCard key={i} role={role} index={i} />
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* İletişim */}
-                        {data.contact && (
-                            <div style={{
-                                padding: '16px', borderRadius: '12px',
-                                background: 'rgba(255,255,255,0.02)', border: '1px solid #18181b',
-                            }}>
-                                <p style={{ fontSize: '13px', fontWeight: 600, color: '#e4e4e7', marginBottom: '6px' }}>
-                                    {data.contact.title}
-                                </p>
-                                <p style={{ fontSize: '13px', color: '#71717a', lineHeight: 1.55, margin: 0 }}>
-                                    {data.contact.body}
-                                </p>
-                            </div>
-                        )}
-
-                        <p style={{
-                            marginTop: '32px', textAlign: 'center',
-                            fontSize: '11px', color: '#27272a',
-                            fontFamily: "'DM Mono', monospace",
-                        }}>
-                            AEGIS v3 · SIGAL MEDIA · {data.lastUpdated}
+                        <p style={{ fontSize: '13px', color: '#71717a', lineHeight: 1.65, margin: 0 }}>
+                            {data.anonymity.body}
                         </p>
-                    </>
-                )}
+                    </div>
+                </div>
+
+                {/* ── Roles ── */}
+                <div style={{ marginBottom: '20px' }}>
+                    <SectionDivider label={data.rbac.title} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {data.rbac.roles.map((role, i) => (
+                            <RoleCard key={i} role={role} index={i} />
+                        ))}
+                    </div>
+                </div>
+
+                {/* ── Contact ── */}
+                <div style={{ marginBottom: '20px' }}>
+                    <SectionDivider label="RAPORLAMA" />
+                    <div style={{
+                        padding: '16px', borderRadius: '12px',
+                        background: 'rgba(255,255,255,0.02)', border: '1px solid #18181b',
+                    }}>
+                        <p style={{ fontSize: '13px', fontWeight: 600, color: '#e4e4e7', marginBottom: '6px' }}>
+                            {data.contact.title}
+                        </p>
+                        <p style={{ fontSize: '13px', color: '#71717a', lineHeight: 1.55, margin: 0 }}>
+                            {data.contact.body}
+                        </p>
+                    </div>
+                </div>
+
+                {/* ── Footer ── */}
+                <p style={{
+                    marginTop: '32px', textAlign: 'center',
+                    fontSize: '11px', color: '#27272a',
+                    fontFamily: "'DM Mono', monospace",
+                }}>
+                    AEGIS v3 · SIGAL MEDIA · {data.lastUpdated}
+                </p>
             </div>
 
             <style>{`
