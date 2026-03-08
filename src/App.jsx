@@ -13,6 +13,7 @@ import InstallBanner from './components/InstallBanner';
 import VerifyEmail from './pages/VerifyEmail';
 import SafetyPage     from './pages/SafetyPage';
 import AdminDashboard from './pages/AdminDashboard';
+import VerifyHandler   from './pages/VerifyHandler';
 
 export default function App() {
   return (
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="/kvkk"           element={<KVKK />} />
           <Route path="/install"        element={<InstallBanner />} />
           <Route path="/verify-email"   element={<VerifyEmail />} />
+          <Route path="/verify-email/action" element={<VerifyHandler />} />
           {/* Legacy */}
           <Route path="/vitrin" element={<Navigate to="/" replace />} />
         </Routes>
