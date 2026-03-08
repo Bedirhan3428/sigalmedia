@@ -10,8 +10,7 @@ import Profile from './pages/Profile';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import KVKK from './pages/Kvkk';
 import InstallBanner from './components/InstallBanner';
-
-// ── Yeni sayfalar ──────────────────────────────────────────────────────────
+import VerifyEmail from './pages/VerifyEmail';
 import SafetyPage     from './pages/SafetyPage';
 import AdminDashboard from './pages/AdminDashboard';
 
@@ -41,7 +40,7 @@ export default function App() {
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/kvkk"           element={<KVKK />} />
           <Route path="/install"        element={<InstallBanner />} />
-
+          <Route path="/verify-email"   element={<VerifyEmail />} />
           {/* Legacy */}
           <Route path="/vitrin" element={<Navigate to="/" replace />} />
         </Routes>
