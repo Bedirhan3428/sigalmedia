@@ -252,7 +252,7 @@ export default function Register() {
                 type="text"
                 required
                 className="auth-input"
-                placeholder="Kullanıcı adı (örn: matikçiKral)"
+                placeholder="Kullanıcı adı"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
                 maxLength={30}
@@ -266,7 +266,7 @@ export default function Register() {
                 type="email"
                 required
                 className="auth-input"
-                placeholder="ad.soyad@okul.edu.tr"
+                placeholder="E-mail"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
               />
