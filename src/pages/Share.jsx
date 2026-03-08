@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, ImagePlus, X, AlertTriangle, CheckCircle, ShieldAlert } from 'lucide-react';
+import { Send, ImagePlus, X, AlertTriangle, CheckCircle, ShieldAlert, Shield, Dices } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -12,35 +12,49 @@ const MAX_RAW_MB     = 10;
 const TARGET_WIDTH   = 1080;
 const TARGET_QUALITY = 0.78;
 
+// ─── Dönen placeholder metinleri ─────────────────────────────────────────
+const PLACEHOLDERS = [
+    'Uzaktan kesişmekten yoruldum, bi adım at artık.',
+    'Sence okuldaki platonik aşkım bana bakar mı, taktik?',
+    'Kantinde sürekli göz göze geldiğimiz o kişi, instanı sal.',
+    'Nöbetçiyken gördüğüm siyah kapüşonlu, vuruldum resmen.',
+    'Okulun en toksik çifti net ayrılmalı artık, çok yordunuz.',
+    'Yüzüme gülüp arkamdan sallayan o tayfa, her şeyi biliyorum :)',
+    'Kantin fiyatları şaka mı, tost için kredi mi çekelim?',
+    'Şu okulun internet şifresini bilen sevabına fısıldasın acil.',
+    'Eski sevgiliyle aynı koridorda yürümek harbiden büyük eziyet.',
+    'Sırf o kişiyle karşılaşmamak için yolumu uzatıyorum, net.',
+    'Sınavlardan çok bu okulun dedikodusu yordu beni yeminle.',
+    'Koridorda sürekli bağırarak konuşan o tayfa, başımız ağrıyor.',
+    'Admin bu kadar sırrı nasıl tutuyon, ben olsam patlardım.',
+];
+
+function randomPlaceholder(current) {
+    const others = PLACEHOLDERS.filter(p => p !== current);
+    return others[Math.floor(Math.random() * others.length)];
+}
+
 // ─── Canvas sıkıştırma ────────────────────────────────────────────────────
 function compressImage(file) {
     return new Promise((resolve, reject) => {
         const img     = new Image();
         const blobUrl = URL.createObjectURL(file);
-
         img.onload = () => {
             URL.revokeObjectURL(blobUrl);
-
             let { width, height } = img;
             if (width > TARGET_WIDTH) {
                 height = Math.round((height * TARGET_WIDTH) / width);
                 width  = TARGET_WIDTH;
             }
-
             const canvas = document.createElement('canvas');
             canvas.width  = width;
             canvas.height = height;
             canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-
-            // PNG → JPEG'e çevir (şeffaflık giderse kabul edilebilir, çok daha küçük)
             const outMime = file.type === 'image/png' ? 'image/jpeg' : (file.type || 'image/jpeg');
-
             canvas.toBlob(
                 (blob) => {
                     if (!blob) return reject(new Error('Canvas blob oluşturulamadı'));
                     const sizeKB = Math.round(blob.size / 1024);
-                    console.log(`🗜️ ${Math.round(file.size/1024)}KB → ${sizeKB}KB (${outMime})`);
-                    // base64 data URI olarak döndür
                     const reader = new FileReader();
                     reader.onload  = () => resolve({ dataUri: reader.result, sizeKB, mime: outMime });
                     reader.onerror = () => reject(new Error('FileReader hatası'));
@@ -50,7 +64,6 @@ function compressImage(file) {
                 TARGET_QUALITY
             );
         };
-
         img.onerror = () => { URL.revokeObjectURL(blobUrl); reject(new Error('Görsel yüklenemedi')); };
         img.src = blobUrl;
     });
@@ -65,7 +78,7 @@ async function frontendNsfwCheck(file) {
             const nsfwjs = await import('nsfwjs');
             _nsfwModel = await nsfwjs.load();
         }
-        const img    = new Image();
+        const img     = new Image();
         const blobUrl = URL.createObjectURL(file);
         img.src = blobUrl;
         await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
@@ -80,7 +93,7 @@ async function frontendNsfwCheck(file) {
             ? { safe: false, reason: `Ön denetim: uygunsuz içerik (${bad.className} ${(bad.probability*100).toFixed(0)}%)` }
             : { safe: true };
     } catch {
-        return { safe: true }; // Model yüklenemezse backend halleder
+        return { safe: true };
     }
 }
 
@@ -89,17 +102,27 @@ export default function Share() {
     const user     = useAuth();
     const navigate = useNavigate();
 
-    const [content, setContent]   = useState('');
-    const [preview, setPreview]   = useState(null);   // görüntüleme için URL
-    const [imageData, setImageData] = useState(null); // { dataUri, sizeKB, origKB } — yükleme öncesi
-    const [imageUrl, setImageUrl]   = useState(null); // Firebase Storage download URL
-    const [imagePath, setImagePath] = useState(null); // Firebase Storage dosya yolu
-    const [remaining, setRemaining] = useState(null);
-    const [status, setStatus]     = useState({ type: '', msg: '' });
-    const [phase, setPhase]       = useState('idle');
-    // idle | compressing | nsfw-check | uploading | sending | done | error
+    const [content,      setContent]      = useState('');
+    const [placeholder,  setPlaceholder]  = useState(PLACEHOLDERS[0]);
+    const [preview,      setPreview]      = useState(null);
+    const [imageData,    setImageData]    = useState(null);
+    const [imageUrl,     setImageUrl]     = useState(null);
+    const [imagePath,    setImagePath]    = useState(null);
+    const [remaining,    setRemaining]    = useState(null);
+    const [status,       setStatus]       = useState({ type: '', msg: '' });
+    const [phase,        setPhase]        = useState('idle');
+    const [diceSpin,     setDiceSpin]     = useState(false);
 
     const fileRef = useRef();
+
+    // Placeholder her 3 saniyede bir döner (textarea boşken)
+    useEffect(() => {
+        if (content.trim()) return; // yazı varken döndürme
+        const id = setInterval(() => {
+            setPlaceholder(prev => randomPlaceholder(prev));
+        }, 3000);
+        return () => clearInterval(id);
+    }, [content]);
 
     useEffect(() => {
         if (!user?.uid) return;
@@ -109,7 +132,16 @@ export default function Share() {
             .catch(() => {});
     }, [user]);
 
-    // ─── Görsel seç ──────────────────────────────────────────────────
+    // ─── Zar: rastgele placeholder'ı inputa yaz ───────────────────────
+    const handleDice = () => {
+        if (remaining === 0 || isBusy) return;
+        setDiceSpin(true);
+        setTimeout(() => setDiceSpin(false), 500);
+        const picked = randomPlaceholder(content);
+        setContent(picked.slice(0, MAX_CHARS));
+    };
+
+    // ─── Görsel seç & sıkıştır & yükle ──────────────────────────────
     const handleFileChange = async (e) => {
         const raw = e.target.files?.[0];
         if (!raw) return;
@@ -119,82 +151,82 @@ export default function Share() {
             return;
         }
 
-        setStatus({ type: '', msg: '' });
-        setPreview(URL.createObjectURL(raw));
+        const blobPreview = URL.createObjectURL(raw);
+        setPreview(blobPreview);
         setImageData(null);
         setImageUrl(null);
+        setImagePath(null);
+        setStatus({ type: '', msg: '' });
 
-        // 1. Sıkıştır
         setPhase('compressing');
         let compressed;
         try {
             compressed = await compressImage(raw);
         } catch (err) {
+            clearImage(blobPreview);
             setStatus({ type: 'error', msg: `Sıkıştırma hatası: ${err.message}` });
-            setPhase('error');
-            clearImage();
+            setPhase('idle');
             return;
         }
 
-        // 2. nsfwjs ön denetim
         setPhase('nsfw-check');
         const check = await frontendNsfwCheck(raw);
         if (!check.safe) {
-            clearImage();
+            clearImage(blobPreview);
             setStatus({ type: 'error', msg: `🚫 ${check.reason}` });
-            setPhase('error');
+            setPhase('idle');
             return;
         }
 
-        // 3. Firebase Storage'a yükle
         setPhase('uploading');
         try {
-            const res = await fetch(compressed.dataUri);
-            const blob = await res.blob();
-            const ext  = blob.type === 'image/png' ? 'png' : 'jpg';
-            const path = `tweets/${user?.uid || 'anon'}/${Date.now()}.${ext}`;
-            const storageRef = ref(storage, path);
-            await uploadBytes(storageRef, blob, { contentType: blob.type });
-            const url = await getDownloadURL(storageRef);
+            const fetchRes = await fetch(compressed.dataUri);
+            const blob     = await fetchRes.blob();
+            const ext      = blob.type === 'image/png' ? 'png' : 'jpg';
+            const path     = `tweets/${user?.uid || 'anon'}/${Date.now()}.${ext}`;
+            const storRef  = ref(storage, path);
+            await uploadBytes(storRef, blob, { contentType: blob.type });
+            const url = await getDownloadURL(storRef);
             setImageUrl(url);
             setImagePath(path);
             setImageData({ sizeKB: compressed.sizeKB, origKB: Math.round(raw.size / 1024) });
             setPhase('idle');
         } catch (err) {
-            clearImage();
+            clearImage(blobPreview);
             setStatus({ type: 'error', msg: `Görsel yüklenemedi: ${err.message}` });
-            setPhase('error');
+            setPhase('idle');
         }
     };
 
-    const clearImage = () => {
+    const clearImage = (blobUrl) => {
+        const urlToRevoke = blobUrl || preview;
+        if (urlToRevoke) URL.revokeObjectURL(urlToRevoke);
+        setPreview(null);
         setImageData(null);
         setImageUrl(null);
         setImagePath(null);
-        if (preview) URL.revokeObjectURL(preview);
-        setPreview(null);
         if (fileRef.current) fileRef.current.value = '';
     };
 
-    // ─── Gönder ──────────────────────────────────────────────────────
+    // ─── Tweet gönder ─────────────────────────────────────────────────
     const handleSubmit = async () => {
+        if (!user?.uid || phase !== 'idle') return;
         const hasText  = content.trim().length > 0;
         const hasImage = !!imageUrl;
         if (!hasText && !hasImage) return;
-        if (phase !== 'idle') return;
 
         setStatus({ type: '', msg: '' });
         setPhase('sending');
 
         try {
             const res  = await fetch(`${API_URL}/api/tweet`, {
-                method: 'POST',
+                method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    deviceId: user.uid,
-                    content:  hasText ? content.trim() : '',
-                    imageUrl: hasImage ? imageUrl   : null,
-                    imagePath: hasImage ? imagePath : null,
+                body:    JSON.stringify({
+                    deviceId:  user.uid,
+                    content:   hasText  ? content.trim() : '',
+                    imageUrl:  hasImage ? imageUrl       : null,
+                    imagePath: hasImage ? imagePath      : null,
                 }),
             });
             const data = await res.json();
@@ -217,19 +249,19 @@ export default function Share() {
         }
     };
 
-    // ─── UI ──────────────────────────────────────────────────────────
+    // ─── UI Hesapları ─────────────────────────────────────────────────
     const charCount = content.length;
     const charPct   = (charCount / MAX_CHARS) * 100;
     const charColor = charCount > 260 ? '#f43f5e' : charCount > 220 ? '#f97316' : '#6366f1';
-    const isBusy    = ['compressing','nsfw-check','uploading','sending'].includes(phase);
+    const isBusy    = ['compressing', 'nsfw-check', 'uploading', 'sending'].includes(phase);
     const canPost   = (content.trim() || imageUrl) && remaining !== 0 && !isBusy && phase !== 'done';
 
     const phaseLabel = {
         compressing:  '🗜️ Görsel sıkıştırılıyor...',
-        'nsfw-check': '🔍 Ön güvenlik denetimi yapılıyor...',
+        'nsfw-check': '🔍 Ön güvenlik denetimi...',
         uploading:    '☁️ Görsel yükleniyor...',
-        sending:      '🤖 Yapay zeka analiz ediyor ve gönderiliyor...',
-    }[phase];
+        sending:      '🤖 Aegis analiz ediyor...',
+    }[phase] || null;
 
     return (
         <div className="page-container">
@@ -267,16 +299,36 @@ export default function Share() {
                 <div className="share-box">
                     <textarea
                         className="share-textarea"
-                        placeholder="Okulda ne oluyor? 👀"
+                        placeholder={placeholder}
                         value={content}
                         onChange={e => setContent(e.target.value.slice(0, MAX_CHARS))}
                         disabled={remaining === 0 || isBusy}
                         rows={4}
                     />
 
+                    {/* ── Görsel önizleme ── */}
                     {preview && (
-                        <div className="image-preview-wrap">
-                            <img src={preview} alt="Önizleme" className="image-preview" />
+                        <div className="image-preview-wrap" style={{ marginTop: '12px', borderRadius: '10px', overflow: 'hidden' }}>
+                            <img
+                                src={preview}
+                                alt="Önizleme"
+                                className="image-preview"
+                                style={{ display: 'block', width: '100%', maxHeight: '320px', objectFit: 'cover' }}
+                            />
+
+                            {/* Aegis Badge */}
+                            <div style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                gap: '5px', padding: '5px 0',
+                                background: 'rgba(9,9,11,0.88)', backdropFilter: 'blur(6px)',
+                                borderTop: '1px solid rgba(99,102,241,0.15)',
+                            }}>
+                                <Shield size={9} color="#818cf8" />
+                                <span style={{ fontSize: '9px', fontFamily: "'DM Mono', monospace", color: '#818cf8', letterSpacing: '0.1em', fontWeight: 500 }}>
+                                    reviewed by aegis · sigal media
+                                </span>
+                            </div>
+
                             {imageData && (
                                 <div className="image-size-badge">
                                     {imageData.origKB !== imageData.sizeKB
@@ -285,7 +337,7 @@ export default function Share() {
                                 </div>
                             )}
                             {!isBusy && (
-                                <button className="image-remove-btn" onClick={clearImage}>
+                                <button className="image-remove-btn" onClick={() => clearImage()}>
                                     <X size={14} />
                                 </button>
                             )}
@@ -298,6 +350,7 @@ export default function Share() {
                     )}
 
                     <div className="share-footer">
+                        {/* Görsel ekle */}
                         <button
                             className="image-add-btn"
                             onClick={() => fileRef.current?.click()}
@@ -314,6 +367,31 @@ export default function Share() {
                             onChange={handleFileChange}
                         />
 
+                        {/* 🎲 Zar butonu */}
+                        <button
+                            onClick={handleDice}
+                            disabled={remaining === 0 || isBusy}
+                            title="Rastgele ilham al"
+                            style={{
+                                display:         'flex',
+                                alignItems:      'center',
+                                justifyContent:  'center',
+                                width:           34,
+                                height:          34,
+                                borderRadius:    '9px',
+                                background:      'rgba(99,102,241,0.08)',
+                                border:          '1px solid rgba(99,102,241,0.2)',
+                                cursor:          remaining === 0 || isBusy ? 'not-allowed' : 'pointer',
+                                color:           '#818cf8',
+                                flexShrink:      0,
+                                transition:      'all 0.15s',
+                                transform:       diceSpin ? 'rotate(180deg) scale(1.15)' : 'rotate(0deg) scale(1)',
+                            }}
+                        >
+                            <Dices size={16} />
+                        </button>
+
+                        {/* Karakter sayacı */}
                         <svg width="28" height="28" viewBox="0 0 28 28" style={{ marginLeft: 'auto' }}>
                             <circle cx="14" cy="14" r="11" fill="none" stroke="#27272a" strokeWidth="3" />
                             <circle
@@ -336,20 +414,36 @@ export default function Share() {
                             {isBusy ? <span className="spinner-sm" /> : <><Send size={16} />Paylaş</>}
                         </button>
                     </div>
+
+                    {/* Aegis imzası */}
+                    <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        gap: '5px', paddingTop: '10px',
+                        borderTop: '1px solid rgba(99,102,241,0.1)', marginTop: '10px',
+                    }}>
+                        <Shield size={10} color="#6366f140" />
+                        <span style={{ fontSize: '9.5px', fontFamily: "'DM Mono', monospace", color: '#6366f155', letterSpacing: '0.08em' }}>
+                            protected by aegis · sigal media content shield
+                        </span>
+                    </div>
                 </div>
 
                 <div className="share-rules">
-                    <div className="rule-row"><ShieldAlert size={13} color="#6366f1" />
-                        <span>Görseller önce tarayıcıda sıkıştırılır, sonra 2 aşamalı YZ denetiminden geçer.</span>
+                    <div className="rule-row">
+                        <ShieldAlert size={13} color="#6366f1" />
+                        <span>Paylaşımlar Aegis YZ denetiminden geçer.</span>
                     </div>
-                    <div className="rule-row"><ShieldAlert size={13} color="#f97316" />
-                        <span>İnsan yüzü, çıplaklık, şiddet veya kişisel bilgi → otomatik reddedilir.</span>
+                    <div className="rule-row">
+                        <ShieldAlert size={13} color="#f97316" />
+                        <span>Çıplaklık, şiddet veya kişisel bilgi → otomatik reddedilir.</span>
                     </div>
-                    <div className="rule-row"><ShieldAlert size={13} color="#f43f5e" />
+                    <div className="rule-row">
+                        <ShieldAlert size={13} color="#f43f5e" />
                         <span>DM ss paylaşıyorsan <strong>isimleri karalayarak</strong> gönder (KVKK).</span>
                     </div>
                 </div>
             </main>
+
             <Navbar />
         </div>
     );
