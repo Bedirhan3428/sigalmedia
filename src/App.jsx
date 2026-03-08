@@ -9,6 +9,7 @@ import Share from './pages/Share';
 import Profile from './pages/Profile';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import KVKK from './pages/Kvkk';
+import TermsOfService from './pages/TermsOfService'; // Yeni import
 import InstallBanner from './components/InstallBanner';
 import VerifyEmail from './pages/VerifyEmail';
 import SafetyPage     from './pages/SafetyPage';
@@ -29,20 +30,20 @@ export default function App() {
           <Route path="/share" element={<ProtectedRoute><Share /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
-          {/* Aegis & Admin — sadece yetkili kullanıcılara açık
-              Backend RBAC koruması zaten mevcut;
-              Frontend'de de ProtectedRoute ile temel auth kontrolü yap. */}
+          {/* Aegis & Admin */}
           <Route path="/admin" element={
             <ProtectedRoute><AdminDashboard /></ProtectedRoute>
           } />
 
           {/* Herkese açık bilgi sayfaları */}
-          <Route path="/safety"         element={<SafetyPage />} />
-          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          <Route path="/kvkk"           element={<KVKK />} />
-          <Route path="/install"        element={<InstallBanner />} />
-          <Route path="/verify-email"   element={<VerifyEmail />} />
+          <Route path="/safety"           element={<SafetyPage />} />
+          <Route path="/privacy-policy"   element={<PrivacyPolicy />} />
+          <Route path="/terms-of-service" element={<TermsOfService />} /> {/* Yeni Route */}
+          <Route path="/kvkk"             element={<KVKK />} />
+          <Route path="/install"          element={<InstallBanner />} />
+          <Route path="/verify-email"     element={<VerifyEmail />} />
           <Route path="/verify-email/action" element={<VerifyHandler />} />
+          
           {/* Legacy */}
           <Route path="/vitrin" element={<Navigate to="/" replace />} />
         </Routes>
