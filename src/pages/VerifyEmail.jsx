@@ -6,6 +6,7 @@ import { Mail, CheckCircle2, RefreshCw, LogIn } from 'lucide-react';
 import '../styles/auth.css';
 
 
+
 export default function VerifyEmail() {
   const [checking, setChecking] = useState(false);
   const [status, setStatus]     = useState({ type: '', msg: '' });
