@@ -9,12 +9,13 @@ import Share from './pages/Share';
 import Profile from './pages/Profile';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import KVKK from './pages/Kvkk';
-import TermsOfService from './pages/TermsOfService'; // Yeni import
+import TermsOfService from './pages/TermsOfService';
 import InstallBanner from './components/InstallBanner';
 import VerifyEmail from './pages/VerifyEmail';
 import SafetyPage     from './pages/SafetyPage';
 import AdminDashboard from './pages/AdminDashboard';
 import VerifyHandler   from './pages/VerifyHandler';
+import PostDetail from './pages/PostDetail'; // ← YENİ
 
 export default function App() {
   return (
@@ -30,6 +31,9 @@ export default function App() {
           <Route path="/share" element={<ProtectedRoute><Share /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
+          {/* Tweet Detay — herkese açık ← YENİ */}
+          <Route path="/post-detail" element={<PostDetail />} />
+
           {/* Aegis & Admin */}
           <Route path="/admin" element={
             <ProtectedRoute><AdminDashboard /></ProtectedRoute>
@@ -38,12 +42,12 @@ export default function App() {
           {/* Herkese açık bilgi sayfaları */}
           <Route path="/safety"           element={<SafetyPage />} />
           <Route path="/privacy-policy"   element={<PrivacyPolicy />} />
-          <Route path="/terms-of-service" element={<TermsOfService />} /> {/* Yeni Route */}
+          <Route path="/terms-of-service" element={<TermsOfService />} />
           <Route path="/kvkk"             element={<KVKK />} />
           <Route path="/install"          element={<InstallBanner />} />
           <Route path="/verify-email"     element={<VerifyEmail />} />
           <Route path="/verify-email/action" element={<VerifyHandler />} />
-          
+
           {/* Legacy */}
           <Route path="/vitrin" element={<Navigate to="/" replace />} />
         </Routes>
