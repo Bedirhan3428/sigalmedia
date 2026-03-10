@@ -5,7 +5,7 @@ import {
     AlertTriangle, Twitter, Users, Loader2,
 } from 'lucide-react';
 import CommentSection from './CommentSection';
-import StoryShare from './StoryShare';
+import StoryShare, { LinkShare } from './StoryShare';
 import { API_URL } from '../apiConfig';
 
 function timeAgo(date) {
@@ -656,6 +656,7 @@ export default function TweetCard({ tweet, deviceId, likedTweetIds = [], likedCo
                             <span>{commentCount}</span>
                         </button>
 
+                        <LinkShare tweet={tweet} />
                         <StoryShare tweet={tweet} />
 
                         {!isOwn && deviceId && (
