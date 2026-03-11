@@ -10,7 +10,7 @@ export default function Kvkk() {
     <div style={pageStyle}>
       {/* Header */}
       <div style={headerStyle}>
-        <button onClick={() => navigate('/register')} style={backBtnStyle}>
+        <button onClick={() => navigate(-1)} style={backBtnStyle}>
           <ArrowLeft size={18} />
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

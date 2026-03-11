@@ -80,11 +80,11 @@ function LikedCommentRow({ comment, deviceId, onUnlike }) {
 
 // ─── Ayarlar Modalı ───────────────────────────────────────────────────────
 function SettingsModal({ user, profile, onClose, onSave }) {
-  const [avatars, setAvatars]     = useState([]);
-  const [username, setUsername]   = useState(profile?.username || profile?.avatar || '');
-  const [selectedAv, setSelectedAv] = useState(null);
-  const [saving, setSaving]       = useState(false);
-  const [error, setError]         = useState('');
+  const [avatars, setAvatars]       = useState([]);
+  const [username, setUsername]     = useState(profile?.username || profile?.avatar || '');
+  const [selectedAv, setSelectedAv] = useState(null); // null = değişiklik yok
+  const [saving, setSaving]         = useState(false);
+  const [error, setError]           = useState('');
 
   useEffect(() => {
     fetch(`${API_URL}/api/avatars`)
@@ -98,7 +98,15 @@ function SettingsModal({ user, profile, onClose, onSave }) {
     setSaving(true); setError('');
     try {
       const body = { username: username.trim() };
-      if (selectedAv) body.avatarUrl = selectedAv.url;
+
+      // FIX: avatar temizleme logic'i düzeltildi.
+      // selectedAv === null  → avatara dokunma (body'ye ekleme)
+      // selectedAv?.id === '__clear__' → avatarı kaldır (null gönder)
+      // selectedAv?.url var  → yeni avatar seç
+      if (selectedAv !== null) {
+        body.avatarUrl = selectedAv.id === '__clear__' ? null : selectedAv.url;
+      }
+
       const res  = await fetch(`${API_URL}/api/user/${user.uid}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -112,7 +120,12 @@ function SettingsModal({ user, profile, onClose, onSave }) {
     finally { setSaving(false); }
   };
 
-  const currentAvatarUrl = selectedAv?.url || profile?.avatarUrl || null;
+  const currentAvatarUrl = selectedAv === null
+    ? profile?.avatarUrl                          // değişiklik yok → mevcut
+    : selectedAv.id === '__clear__'
+      ? null                                      // temizlendi
+      : selectedAv.url;                           // yeni seçim
+
   const displayName = username || profile?.username || profile?.avatar || '';
 
   return (
@@ -167,8 +180,8 @@ function SettingsModal({ user, profile, onClose, onSave }) {
           marginBottom: '16px',
           padding: '4px 2px',
         }}>
-          {/* Mevcut seçimi kaldır butonu */}
-          {(profile?.avatarUrl || selectedAv) && (
+          {/* Mevcut avatarı kaldır butonu — sadece mevcut bir avatar varsa göster */}
+          {profile?.avatarUrl && (
             <button
               onClick={() => setSelectedAv({ id: '__clear__', url: null })}
               style={{
@@ -322,7 +335,6 @@ export default function Profile() {
   const [followingIds, setFollowingIds]     = useState([]);
   const [loading, setLoading]               = useState(true);
 
-  // Modals
   const [showSettings, setShowSettings]         = useState(false);
   const [showFollowers, setShowFollowers]       = useState(false);
   const [showFollowing, setShowFollowing]       = useState(false);
@@ -365,7 +377,6 @@ export default function Profile() {
 
   return (
     <div className="page-container">
-      {/* Modaller */}
       {showSettings && (
         <SettingsModal
           user={user}
@@ -419,13 +430,11 @@ export default function Profile() {
           </div>
         ) : (
           <>
-            {/* Avatar Kartı */}
             <div className="profile-card">
               <Avatar name={profile?.username || profile?.avatar} avatarUrl={profile?.avatarUrl} size={56} />
               <div style={{ marginLeft: '12px', flex: 1 }}>
                 <h2 className="profile-name">{profile?.username || profile?.avatar || 'Anonim'}</h2>
                 <p className="profile-email">{user?.email}</p>
-                {/* Takipçi / Takip sayıları — tıklanabilir */}
                 <div style={{ display: 'flex', gap: '16px', marginTop: '6px' }}>
                   <button onClick={openFollowers} style={{
                     background: 'none', border: 'none', cursor: 'pointer', padding: 0,
@@ -443,7 +452,6 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* Günlük Limit */}
             <div className="limit-card">
               <p className="limit-title">Günlük Tweet Hakkı</p>
               <div className="limit-dots">
@@ -458,7 +466,6 @@ export default function Profile() {
               </p>
             </div>
 
-            {/* Ana Sekmeler */}
             <div className="profile-tabs">
               <button className={`profile-tab ${profileTab === 'tweets' ? 'profile-tab--active' : ''}`} onClick={() => setProfileTab('tweets')}>
                 <Twitter size={14} /> Tweetlerim ({myTweets.length})

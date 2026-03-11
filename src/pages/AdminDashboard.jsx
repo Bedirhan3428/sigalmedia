@@ -9,11 +9,17 @@ import {
 import { API_URL } from '../apiConfig';
 import { useAuth } from '../context/AuthContext';
 
-function adminHeaders(deviceId) {
-    return {
-        'Content-Type': 'application/json',
-        'x-admin-id':   deviceId,
-    };
+// FIX #2 (frontend): Bearer token ile güvenli admin isteği
+async function adminHeaders(user) {
+    try {
+        const token = await user.getIdToken();
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        };
+    } catch {
+        return { 'Content-Type': 'application/json' };
+    }
 }
 
 // ─── Audit Score Bar ───────────────────────────────────────────────────────
@@ -87,7 +93,6 @@ function DeleteReasonModal({ onConfirm, onCancel }) {
                     Bu sebep tweet sahibine bildirilecek.
                 </p>
 
-                {/* Hazır sebepler */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     {PRESETS.map(p => (
                         <button key={p} onClick={() => setReason(p)} style={{
@@ -101,7 +106,6 @@ function DeleteReasonModal({ onConfirm, onCancel }) {
                     ))}
                 </div>
 
-                {/* Manuel giriş */}
                 <textarea
                     placeholder="Veya özel sebep yaz..."
                     value={reason}
@@ -139,8 +143,8 @@ function DeleteReasonModal({ onConfirm, onCancel }) {
 }
 
 // ─── Quarantine/Suspended Tweet Satırı ───────────────────────────────────
-function QuarantineRow({ tweet, deviceId, onAction }) {
-    const [loading,      setLoading]      = useState('');
+function QuarantineRow({ tweet, user, onAction }) {
+    const [loading,       setLoading]       = useState('');
     const [showDeleteDlg, setShowDeleteDlg] = useState(false);
 
     const isSuspended = tweet.aegisStatus === 'suspended';
@@ -149,10 +153,10 @@ function QuarantineRow({ tweet, deviceId, onAction }) {
     const makeDecision = async (decision, reason) => {
         setLoading(decision);
         try {
+            const headers = await adminHeaders(user);
             const res = await fetch(`${API_URL}/api/admin/decision/${tweet._id}`, {
-                method:  'POST',
-                headers: adminHeaders(deviceId),
-                body:    JSON.stringify({ decision, reason }),
+                method: 'POST', headers,
+                body: JSON.stringify({ decision, reason }),
             });
             if (res.ok) onAction(tweet._id, decision);
         } catch (err) { console.error(err); }
@@ -163,10 +167,10 @@ function QuarantineRow({ tweet, deviceId, onAction }) {
         setShowDeleteDlg(false);
         setLoading('delete');
         try {
+            const headers = await adminHeaders(user);
             const res = await fetch(`${API_URL}/api/admin/tweet/${tweet._id}`, {
-                method:  'DELETE',
-                headers: adminHeaders(deviceId),
-                body:    JSON.stringify({ reason }),
+                method: 'DELETE', headers,
+                body: JSON.stringify({ reason }),
             });
             if (res.ok) onAction(tweet._id, 'removed');
         } catch (err) { console.error(err); }
@@ -176,8 +180,9 @@ function QuarantineRow({ tweet, deviceId, onAction }) {
     const forceAudit = async () => {
         setLoading('audit');
         try {
+            const headers = await adminHeaders(user);
             await fetch(`${API_URL}/api/admin/force-audit/${tweet._id}`, {
-                method: 'POST', headers: adminHeaders(deviceId),
+                method: 'POST', headers,
             });
             setTimeout(() => onAction(tweet._id, 'reloaded'), 4000);
         } catch {}
@@ -196,7 +201,6 @@ function QuarantineRow({ tweet, deviceId, onAction }) {
                 background: '#0d0d10', border: `1px solid ${isSuspended ? '#3b1d1d' : '#1c1c22'}`,
                 borderRadius: '12px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px',
             }}>
-                {/* Üst: yazar + durum + şikayet */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <div style={{
@@ -217,7 +221,6 @@ function QuarantineRow({ tweet, deviceId, onAction }) {
                         </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {/* Aegis Status Badge */}
                         <div style={{
                             padding: '3px 8px', borderRadius: '999px',
                             background: isSuspended ? 'rgba(244,63,94,0.1)' : 'rgba(245,158,11,0.1)',
@@ -246,7 +249,6 @@ function QuarantineRow({ tweet, deviceId, onAction }) {
                     </div>
                 </div>
 
-                {/* İçerik */}
                 {tweet.content && (
                     <p style={{
                         fontSize: '13px', color: '#a1a1aa', lineHeight: 1.55, margin: 0,
@@ -258,7 +260,6 @@ function QuarantineRow({ tweet, deviceId, onAction }) {
                     </p>
                 )}
 
-                {/* Audit log */}
                 {lastLog && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         <AuditScoreBar score={lastLog.score || 0} />
@@ -270,9 +271,7 @@ function QuarantineRow({ tweet, deviceId, onAction }) {
                     </div>
                 )}
 
-                {/* Aksiyon butonları */}
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    {/* Restore (suspended için) */}
                     {isSuspended && (
                         <button
                             onClick={() => makeDecision('active', 'Admin tarafından yayına alındı.')}
@@ -290,7 +289,6 @@ function QuarantineRow({ tweet, deviceId, onAction }) {
                         </button>
                     )}
 
-                    {/* Approve (quarantine için) */}
                     {!isSuspended && (
                         <button
                             onClick={() => makeDecision('cleared', 'İçerik incelendi, temiz.')}
@@ -308,7 +306,6 @@ function QuarantineRow({ tweet, deviceId, onAction }) {
                         </button>
                     )}
 
-                    {/* Remove (her ikisi için de — sebep modal'ı açar) */}
                     <button
                         onClick={() => setShowDeleteDlg(true)}
                         disabled={!!loading}
@@ -324,7 +321,6 @@ function QuarantineRow({ tweet, deviceId, onAction }) {
                         Remove
                     </button>
 
-                    {/* Re-Audit */}
                     <button
                         onClick={forceAudit}
                         disabled={!!loading}
@@ -347,13 +343,13 @@ function QuarantineRow({ tweet, deviceId, onAction }) {
 }
 
 // ─── All Tweets Satırı ────────────────────────────────────────────────────
-function AllTweetRow({ tweet, deviceId, onDeleted }) {
+function AllTweetRow({ tweet, user, onDeleted }) {
     const [loading,       setLoading]       = useState(false);
     const [showDeleteDlg, setShowDeleteDlg] = useState(false);
 
     const statusColors = {
-        active:     '#34d399', quarantine: '#fbbf24', suspended: '#f43f5e',
-        cleared:    '#818cf8', removed:    '#3f3f46',
+        active: '#34d399', quarantine: '#fbbf24', suspended: '#f43f5e',
+        cleared: '#818cf8', removed: '#3f3f46',
     };
     const statusColor = statusColors[tweet.aegisStatus] || '#52525b';
 
@@ -361,10 +357,10 @@ function AllTweetRow({ tweet, deviceId, onDeleted }) {
         setShowDeleteDlg(false);
         setLoading(true);
         try {
+            const headers = await adminHeaders(user);
             const res = await fetch(`${API_URL}/api/admin/tweet/${tweet._id}`, {
-                method:  'DELETE',
-                headers: adminHeaders(deviceId),
-                body:    JSON.stringify({ reason }),
+                method: 'DELETE', headers,
+                body: JSON.stringify({ reason }),
             });
             if (res.ok) onDeleted(tweet._id);
         } catch (err) { console.error(err); }
@@ -385,7 +381,6 @@ function AllTweetRow({ tweet, deviceId, onDeleted }) {
                 display: 'flex', gap: '10px', alignItems: 'flex-start',
                 opacity: tweet.aegisStatus === 'removed' ? 0.5 : 1,
             }}>
-                {/* Avatar */}
                 <div style={{
                     width: 30, height: 30, borderRadius: '50%', background: '#18181b',
                     border: '1px solid #27272a', display: 'flex', alignItems: 'center',
@@ -400,7 +395,6 @@ function AllTweetRow({ tweet, deviceId, onDeleted }) {
                         <span style={{ fontSize: '12px', fontWeight: 600, color: '#e4e4e7' }}>
                             {tweet.authorAvatar || 'Anonim'}
                         </span>
-                        {/* Status badge */}
                         <span style={{
                             fontSize: '9px', fontWeight: 700, color: statusColor,
                             fontFamily: "'DM Mono', monospace", textTransform: 'uppercase',
@@ -429,7 +423,6 @@ function AllTweetRow({ tweet, deviceId, onDeleted }) {
                     )}
                 </div>
 
-                {/* Sil butonu */}
                 {tweet.aegisStatus !== 'removed' && (
                     <button
                         onClick={() => setShowDeleteDlg(true)}
@@ -489,11 +482,11 @@ function AuditLogRow({ entry }) {
 
 // ─── Ana Dashboard ────────────────────────────────────────────────────────
 export default function AdminDashboard() {
-    const user     = useAuth();
-    const deviceId = user?.uid || '';
+    const user = useAuth();
 
     const [tab,        setTab]        = useState('quarantine');
     const [stats,      setStats]      = useState(null);
+    // FIX: quarantine + suspended birleştirildi (backend zaten ikisini getiriyor)
     const [quarantine, setQuarantine] = useState([]);
     const [allTweets,  setAllTweets]  = useState([]);
     const [auditLog,   setAuditLog]   = useState([]);
@@ -503,43 +496,52 @@ export default function AdminDashboard() {
     const [allTotal,   setAllTotal]   = useState(0);
 
     const fetchStats = useCallback(async () => {
+        if (!user) return;
         try {
-            const res  = await fetch(`${API_URL}/api/admin/stats`, { headers: adminHeaders(deviceId) });
+            const headers = await adminHeaders(user);
+            const res  = await fetch(`${API_URL}/api/admin/stats`, { headers });
             const data = await res.json();
             if (res.ok) setStats(data);
             else setError(data.error || 'Yetki hatası');
         } catch { setError('Bağlantı hatası'); }
-    }, [deviceId]);
+    }, [user]);
 
     const fetchQuarantine = useCallback(async () => {
+        if (!user) return;
         setLoading(true);
         try {
-            const res  = await fetch(`${API_URL}/api/admin/quarantine?limit=30`, { headers: adminHeaders(deviceId) });
+            // /admin/quarantine endpoint'i hem quarantine hem suspended döndürüyor
+            const headers = await adminHeaders(user);
+            const res  = await fetch(`${API_URL}/api/admin/quarantine?limit=30`, { headers });
             const data = await res.json();
             if (res.ok) setQuarantine(data.tweets || []);
         } catch {}
         finally { setLoading(false); }
-    }, [deviceId]);
+    }, [user]);
 
     const fetchAllTweets = useCallback(async (page = 1) => {
+        if (!user) return;
         setLoading(true);
         try {
-            const res  = await fetch(`${API_URL}/api/admin/all-tweets?limit=30&page=${page}`, { headers: adminHeaders(deviceId) });
+            const headers = await adminHeaders(user);
+            const res  = await fetch(`${API_URL}/api/admin/all-tweets?limit=30&page=${page}`, { headers });
             const data = await res.json();
             if (res.ok) { setAllTweets(data.tweets || []); setAllTotal(data.total || 0); }
         } catch {}
         finally { setLoading(false); }
-    }, [deviceId]);
+    }, [user]);
 
     const fetchAuditLog = useCallback(async () => {
+        if (!user) return;
         setLoading(true);
         try {
-            const res  = await fetch(`${API_URL}/api/admin/audit-log?limit=50`, { headers: adminHeaders(deviceId) });
+            const headers = await adminHeaders(user);
+            const res  = await fetch(`${API_URL}/api/admin/audit-log?limit=50`, { headers });
             const data = await res.json();
             if (res.ok) setAuditLog(Array.isArray(data) ? data : []);
         } catch {}
         finally { setLoading(false); }
-    }, [deviceId]);
+    }, [user]);
 
     useEffect(() => { fetchStats(); }, [fetchStats]);
     useEffect(() => {
@@ -568,7 +570,6 @@ export default function AdminDashboard() {
     return (
         <div style={{ minHeight: '100dvh', background: '#09090b', fontFamily: "'Outfit', system-ui, sans-serif", paddingBottom: '40px' }}>
 
-            {/* Header */}
             <div style={{
                 position: 'sticky', top: 0, zIndex: 10,
                 background: 'rgba(9,9,11,0.95)', backdropFilter: 'blur(12px)',
@@ -614,7 +615,6 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
-                {/* Stats */}
                 {stats && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '20px' }}>
                         <StatCard icon={FileText}    label="Toplam Tweet"     value={stats.tweets?.total}      color="#6366f1" />
@@ -626,7 +626,6 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
-                {/* Tabs */}
                 <div style={{ display: 'flex', borderBottom: '1px solid #18181b', marginBottom: '16px', gap: '4px' }}>
                     {TABS.map(({ id, label, icon: Icon, badge }) => (
                         <button
@@ -655,7 +654,6 @@ export default function AdminDashboard() {
                     ))}
                 </div>
 
-                {/* İçerik */}
                 {loading ? (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px', gap: '10px', color: '#52525b' }}>
                         <Loader2 size={18} className="spin" />
@@ -671,7 +669,7 @@ export default function AdminDashboard() {
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             {quarantine.map(tweet => (
-                                <QuarantineRow key={tweet._id} tweet={tweet} deviceId={deviceId} onAction={handleAction} />
+                                <QuarantineRow key={tweet._id} tweet={tweet} user={user} onAction={handleAction} />
                             ))}
                         </div>
                     )
@@ -687,11 +685,10 @@ export default function AdminDashboard() {
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 {allTweets.map(tweet => (
-                                    <AllTweetRow key={tweet._id} tweet={tweet} deviceId={deviceId} onDeleted={handleTweetDeleted} />
+                                    <AllTweetRow key={tweet._id} tweet={tweet} user={user} onDeleted={handleTweetDeleted} />
                                 ))}
                             </div>
                         )}
-                        {/* Pagination */}
                         {allTotal > 30 && (
                             <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '16px' }}>
                                 <button
