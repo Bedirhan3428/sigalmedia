@@ -1,1 +1,1 @@
-export const API_URL = "http://localhost:5000"; // 's' harfini sil!
+export const API_URL = "https://api.sigalmedia.site/";

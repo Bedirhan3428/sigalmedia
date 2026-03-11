@@ -656,7 +656,7 @@ export default function TweetCard({ tweet, deviceId, likedTweetIds = [], likedCo
                             <span>{commentCount}</span>
                         </button>
 
-                        <LinkShare tweet={tweet} />
+                        
                         <StoryShare tweet={tweet} />
 
                         {!isOwn && deviceId && (
