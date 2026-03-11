@@ -76,7 +76,10 @@ async function frontendNsfwCheck(file) {
         if (!_nsfwModel) {
             await import('@tensorflow/tfjs');
             const nsfwjs = await import('nsfwjs');
-            _nsfwModel = await nsfwjs.load();
+            _nsfwModel = await nsfwjs.load(
+  'https://s3.amazonaws.com/ir_public/nsfwjscdn/model/',
+  { type: 'graph' }
+);
         }
         const img     = new Image();
         const blobUrl = URL.createObjectURL(file);
