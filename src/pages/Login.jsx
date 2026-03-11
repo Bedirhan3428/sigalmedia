@@ -34,7 +34,8 @@ export default function Login() {
       });
 
       await response.json();
-      navigate('/vitrin');
+      // FIX: /vitrin yerine doğrudan / — ara redirect gereksizdi
+      navigate('/');
     } catch (err) {
       console.error("❌ Hata oluştu:", err);
       setError('Mail veya şifre hatalı.');
@@ -98,7 +99,6 @@ export default function Login() {
           </button>
         </form>
 
-        {/* Ayırıcı */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: '10px',
           margin: '16px 0',
@@ -108,7 +108,6 @@ export default function Login() {
           <div style={{ flex: 1, height: '1px', backgroundColor: '#27272a' }} />
         </div>
 
-        {/* Kayıt ol butonu */}
         <Link to="/register" style={{ textDecoration: 'none' }}>
           <button
             className="auth-btn"
