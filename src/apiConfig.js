@@ -1,1 +1,1 @@
-export const API_URL = "https://api.sigalmedia.site/";
+export const API_URL = "https://sigalmedia-backend-1.onrender.com";
