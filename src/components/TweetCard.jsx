@@ -7,6 +7,7 @@ import {
 import CommentSection from './CommentSection';
 import StoryShare, { LinkShare } from './StoryShare';
 import { API_URL } from '../apiConfig';
+import { renderWithHashtags } from '../utils/renderWithHashtags.jsx';
 
 function timeAgo(date) {
     const diff = (Date.now() - new Date(date)) / 1000;
@@ -609,7 +610,7 @@ export default function TweetCard({ tweet, deviceId, likedTweetIds = [], likedCo
                 </div>
 
                 {/* ── Metin ── */}
-                {tweet.content && <p className="tweet-content">{tweet.content}</p>}
+                {tweet.content && <p className="tweet-content">{renderWithHashtags(tweet.content)}</p>}
 
                 {/* ── Görsel ── */}
                 {imageUrl && !imgError && (

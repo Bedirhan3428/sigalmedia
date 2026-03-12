@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Send, Trash2, Heart } from 'lucide-react';
 import { Avatar } from './TweetCard';
 import { API_URL } from '../apiConfig';
+import { renderWithHashtags } from '../utils/renderWithHashtags.jsx';
 
 
 function timeAgo(date) {
@@ -58,7 +59,7 @@ function CommentItem({ comment, deviceId, likedCommentIds, onDelete }) {
             )}
           </div>
         </div>
-        <p className="comment-text">{comment.content}</p>
+        <div className="comment-content">{renderWithHashtags(comment.content)}</div>
       </div>
     </div>
   );

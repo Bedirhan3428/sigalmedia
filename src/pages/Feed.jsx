@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import TweetCard from '../components/TweetCard';
 import Navbar from '../components/Navbar';
 import { API_URL } from '../apiConfig';
+import { renderWithHashtags } from '../utils/renderWithHashtags.jsx';
 
 const avatarColors = ['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#8b5cf6'];
 
@@ -57,7 +58,7 @@ function BombTweet({ tweet }) {
           <p className="tweet-author" style={{ fontSize: '0.8rem' }}>{tweet.authorAvatar}</p>
         </div>
 
-        <p className="tweet-content" style={{ fontSize: '0.9rem' }}>{tweet.content}</p>
+        {tweet.content && <p className="tweet-content">{renderWithHashtags(tweet.content)}</p>}
 
         {/* ── Tweet görseli ── */}
         {tweet.imageUrl && (
