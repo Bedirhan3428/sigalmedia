@@ -1,68 +1,81 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { ProfileProvider } from './hooks/useProfile.jsx';
 import ProtectedRoute from './components/ProtectedRoute';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Feed from './pages/Feed';
-import Share from './pages/Share';
-import Profile from './pages/Profile';
-import PrivacyPolicy from './pages/PrivacyPolicy';
-import KVKK from './pages/Kvkk';
-import TermsOfService from './pages/TermsOfService';
-import InstallBanner from './components/InstallBanner';
-import VerifyEmail from './pages/VerifyEmail';
-import SafetyPage     from './pages/SafetyPage';
+import { Login, Register } from './pages/Auth';
+import Feed       from './pages/Feed';
+import Explore    from './pages/Explore';
+import Share      from './pages/Share';
+import Reels      from './pages/Reels';
+import Profile    from './pages/Profile';
+import Messages   from './pages/Messages';
+import ChatPage   from './pages/ChatPage';
+import PostDetail from './pages/PostDetail';
 import AdminDashboard from './pages/AdminDashboard';
-import VerifyHandler   from './pages/VerifyHandler';
-import PostDetail from './pages/PostDetail'; // ← YENİ
+import SafetyPage     from './pages/SafetyPage';
+import PrivacyPolicy  from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
+import Kvkk           from './pages/Kvkk';
+import VerifyEmail    from './pages/VerifyEmail';
+import VerifyHandler  from './pages/VerifyHandler';
+
+function Wrap({ children }) {
+  return (
+    <AuthProvider>
+      <ProfileProvider>
+        {children}
+      </ProfileProvider>
+    </AuthProvider>
+  );
+}
+
+function Protected({ children }) {
+  return <ProtectedRoute>{children}</ProtectedRoute>;
+}
 
 export default function App() {
   return (
-    <AuthProvider>
+    <Wrap>
       <Router>
         <Routes>
-          {/* Public */}
-          <Route path="/login"          element={<Login />} />
-          <Route path="/register"       element={<Register />} />
+          {/* Auth */}
+          <Route path="/login"    element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
-          {/* Protected */}
-          <Route path="/" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
-          <Route path="/share" element={<ProtectedRoute><Share /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          {/* Main app — protected */}
+          <Route path="/"        element={<Protected><Feed /></Protected>} />
+          <Route path="/explore" element={<Protected><Explore /></Protected>} />
+          <Route path="/share"   element={<Protected><Share /></Protected>} />
+          <Route path="/reels"   element={<Protected><Reels /></Protected>} />
 
-          {/* Tweet Detay — herkese açık ← YENİ */}
+          {/* Profile — own + others */}
+          <Route path="/profile"    element={<Protected><Profile /></Protected>} />
+          <Route path="/user/:uid"  element={<Protected><Profile /></Protected>} />
+
+          {/* Messages */}
+          <Route path="/messages"          element={<Protected><Messages /></Protected>} />
+          <Route path="/messages/:partnerUid" element={<Protected><ChatPage /></Protected>} />
+
+          {/* Post detail */}
           <Route path="/post-detail" element={<PostDetail />} />
 
-          {/* Aegis & Admin */}
-          <Route path="/admin" element={
-            <ProtectedRoute><AdminDashboard /></ProtectedRoute>
-          } />
+          {/* Admin */}
+          <Route path="/admin" element={<Protected><AdminDashboard /></Protected>} />
 
-          {/* Herkese açık bilgi sayfaları */}
+          {/* Public info pages */}
           <Route path="/safety"           element={<SafetyPage />} />
           <Route path="/privacy-policy"   element={<PrivacyPolicy />} />
           <Route path="/terms-of-service" element={<TermsOfService />} />
-          <Route path="/kvkk"             element={<KVKK />} />
-          <Route path="/install"          element={<InstallBanner />} />
+          <Route path="/kvkk"             element={<Kvkk />} />
           <Route path="/verify-email"     element={<VerifyEmail />} />
           <Route path="/verify-email/action" element={<VerifyHandler />} />
 
-          {/* Legacy */}
+          {/* Legacy redirects */}
           <Route path="/vitrin" element={<Navigate to="/" replace />} />
+          <Route path="*"       element={<Navigate to="/" replace />} />
         </Routes>
-
-        <footer style={{
-          marginTop:   '32px',
-          paddingTop:  '16px',
-          borderTop:   '1px solid #27272a',
-          fontSize:    '12px',
-          color:       '#3f3f46',
-          textAlign:   'center',
-        }}>
-          © 2026 Şigal Medya. Tüm hakları saklıdır.
-        </footer>
       </Router>
-    </AuthProvider>
+    </Wrap>
   );
 }

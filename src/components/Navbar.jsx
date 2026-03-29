@@ -1,36 +1,61 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, PlusSquare, User } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { Home, Search, PlusSquare, Clapperboard } from 'lucide-react';
+
+// Simple hook to get profile avatar from context
+import { useProfile } from '../hooks/useProfile.jsx';
 
 export default function Navbar() {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const navigate   = useNavigate();
+  const location   = useLocation();
+  const user       = useAuth();
+  const { profile } = useProfile();
+
+  const path = location.pathname;
 
   const tabs = [
-    { path: '/',        icon: Home,       label: 'Ana Sayfa' },
-    { path: '/share',   icon: PlusSquare, label: 'Paylaş'   },
-    { path: '/profile', icon: User,       label: 'Profil'   },
+    { id: 'home',     path: '/',          icon: <Home size={26} strokeWidth={path === '/' ? 2.5 : 1.8} />,                 label: 'Ana Sayfa' },
+    { id: 'explore',  path: '/explore',   icon: <Search size={26} strokeWidth={path === '/explore' ? 2.5 : 1.8} />,        label: 'Keşfet' },
+    { id: 'share',    path: '/share',     icon: null,                                                                       label: 'Paylaş' },
+    { id: 'reels',    path: '/reels',     icon: <Clapperboard size={26} strokeWidth={path === '/reels' ? 2.5 : 1.8} />,   label: 'Reels' },
+    { id: 'profile',  path: '/profile',   icon: null,                                                                       label: 'Profil' },
   ];
 
   return (
     <nav className="bottom-nav">
-      {tabs.map(({ path, icon: Icon, label }) => {
-        const active = location.pathname === path;
+      {tabs.map(tab => {
+        const isActive = path === tab.path;
+
         return (
           <button
-            key={path}
-            onClick={() => navigate(path)}
-            className={`nav-btn ${active ? 'nav-btn--active' : ''}`}
-            aria-label={label}
+            key={tab.id}
+            onClick={() => navigate(tab.path)}
+            className={`nav-tab ${isActive ? 'nav-tab--active' : ''}`}
+            aria-label={tab.label}
           >
-            {path === '/share' ? (
-              <div className="nav-plus">
-                <Icon size={22} strokeWidth={2.5} />
+            {tab.id === 'share' ? (
+              /* Plus / Create button */
+              <div className="nav-create-btn">
+                <PlusSquare size={20} strokeWidth={2.5} />
               </div>
+            ) : tab.id === 'profile' ? (
+              /* Profile avatar or letter */
+              profile?.avatarUrl ? (
+                <img
+                  src={profile.avatarUrl}
+                  alt="Profil"
+                  className="nav-profile-img"
+                  style={{ borderColor: isActive ? '#fff' : 'transparent' }}
+                />
+              ) : (
+                <div className="nav-tab-letter" style={{ borderColor: isActive ? '#fff' : 'transparent' }}>
+                  {(profile?.username || user?.email || '?').charAt(0).toUpperCase()}
+                </div>
+              )
             ) : (
-              <Icon size={22} strokeWidth={active ? 2.5 : 1.8} />
+              tab.icon
             )}
-            <span className="nav-label">{label}</span>
           </button>
         );
       })}

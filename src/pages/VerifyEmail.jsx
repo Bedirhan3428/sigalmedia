@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import { reload } from 'firebase/auth';
 import { Mail, CheckCircle2, RefreshCw, LogIn } from 'lucide-react';
-import '../styles/auth.css';
+
 
 
 
