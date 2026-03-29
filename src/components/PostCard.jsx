@@ -286,6 +286,26 @@ export default function PostCard({
   const isSuspended = post.aegisStatus === 'suspended';
   const isRemoved   = post.aegisStatus === 'removed';
 
+  // Auto-play videos when they enter the screen, pause when they exit
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !isVideo) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          video.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+        } else {
+          video.pause();
+          setPlaying(false);
+        }
+      });
+    }, { threshold: 0.6 });
+
+    observer.observe(video);
+    return () => observer.disconnect();
+  }, [isVideo]);
+
   if ((isSuspended || isRemoved) && !isOwn) return null;
 
   // Double-tap to like
@@ -424,6 +444,8 @@ export default function PostCard({
         {(post.imageUrl || post.content) && (
           <div
             className="post-media post-media--square"
+            style={{ position: 'relative', WebkitUserSelect: 'none', userSelect: 'none' }}
+            onContextMenu={e => e.preventDefault()}
             onClick={(e) => {
               // Video ise oynat/durdur + çift tıklama
               if (isVideo && videoRef.current) {
@@ -440,6 +462,10 @@ export default function PostCard({
             {post.imageUrl && !isVideo && (
               <img src={post.imageUrl} alt="" loading="lazy" />
             )}
+            
+            {/* Şeffaf koruma katmanı: sağ tık ve uzun basmayı engeller */}
+            <div style={{ position: 'absolute', inset: 0, zIndex: 4, background: 'transparent', WebkitTouchCallout: 'none' }} />
+
             {post.imageUrl && isVideo && (
               <>
                 <video
@@ -450,7 +476,14 @@ export default function PostCard({
                   playsInline
                   preload="metadata"
                   onEnded={() => setPlaying(false)}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  onPlay={(e) => {
+                    setPlaying(true);
+                    document.querySelectorAll('video').forEach(v => {
+                      if (v !== e.target && !v.paused) v.pause();
+                    });
+                  }}
+                  onPause={() => setPlaying(false)}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', background: '#000' }}
                 />
                 {/* Play overlay — pointer-events:none → tıklama video'ya geçiyor */}
                 {!playing && (

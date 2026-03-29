@@ -157,7 +157,7 @@ export default function Messages() {
           {conversations.map(conv => {
             const partner = conv.partner || {};
             const lastMsg = conv.lastMessage;
-            const isUnread = false; // TODO: implement per-conversation unread tracking
+            const isUnread = lastMsg && lastMsg.senderId !== user.uid && lastMsg.read === false;
 
             return (
               <div

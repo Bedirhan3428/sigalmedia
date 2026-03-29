@@ -30,7 +30,10 @@ export default function Navbar() {
         return (
           <button
             key={tab.id}
-            onClick={() => navigate(tab.path)}
+            onClick={() => {
+              if (isActive) window.location.reload();
+              else navigate(tab.path);
+            }}
             className={`nav-tab ${isActive ? 'nav-tab--active' : ''}`}
             aria-label={tab.label}
           >

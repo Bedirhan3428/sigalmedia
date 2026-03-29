@@ -7,6 +7,7 @@ import StoriesBar from '../components/Stories';
 import Navbar from '../components/Navbar';
 import { API_URL } from '../apiConfig';
 import { useProfile } from '../hooks/useProfile.jsx';
+import { subscribeToUnreadCount } from '../utils/rtdb';
 
 // ── Logo SVG ──────────────────────────────────────────────────────────────────
 function Logo() {
@@ -78,8 +79,15 @@ export default function Feed() {
   const [followingIds, setFollowingIds] = useState([]);
   const [loading,      setLoading]      = useState(true);
   const [refreshing,   setRefreshing]   = useState(false);
+  const [unreadCount,  setUnreadCount]  = useState(0);
 
   const isVerified = user?.emailVerified;
+
+  // Unread messages count
+  useEffect(() => {
+    if (!user?.uid) return;
+    return subscribeToUnreadCount(user.uid, setUnreadCount);
+  }, [user]);
 
   // Load liked IDs + following IDs + saved IDs
   useEffect(() => {
@@ -131,10 +139,13 @@ export default function Feed() {
       <header className="ig-header">
         <Logo />
         <div className="ig-header-actions">
-          <button className="ig-icon-btn" onClick={() => navigate('/messages')}>
+          <button className="ig-icon-btn" style={{ position: 'relative' }} onClick={() => navigate('/messages')}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
             </svg>
+            {unreadCount > 0 && (
+              <div style={{ position: 'absolute', top: 4, right: 4, width: 10, height: 10, background: 'var(--red)', borderRadius: '50%', border: '2px solid var(--bg)' }} />
+            )}
           </button>
         </div>
       </header>

@@ -158,7 +158,7 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
   const initLiked = likedTweetIds.includes(post._id?.toString());
   const [liked,        setLiked]        = useState(initLiked);
   const [likes,        setLikes]        = useState(post.likes || 0);
-  const [muted,        setMuted]        = useState(true);
+  const [muted,        setMuted]        = useState(false);
   const [playing,      setPlaying]      = useState(false);
   const [paused,       setPaused]       = useState(false);
   const [showComments, setShowComments] = useState(false);
@@ -241,9 +241,12 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
 
       {/* ── Media ─────────────────────────────────────────────────────────── */}
       <div
-        style={{ position: 'absolute', inset: 0, cursor: 'pointer' }}
+        style={{ position: 'absolute', inset: 0, cursor: 'pointer', WebkitUserSelect: 'none', userSelect: 'none' }}
+        onContextMenu={e => e.preventDefault()}
         onClick={handleTap}
       >
+        {/* Şeffaf koruma katmanı: sağ tık ve indirmeyi engeller */}
+        <div style={{ position: 'absolute', inset: 0, zIndex: 4, background: 'transparent', WebkitTouchCallout: 'none' }} />
         {/* Yalnızca shouldRenderMedia (isRendered) true ise videoyu veya resmi DOM'a ekle */}
         {isRendered ? (
           isVideo && post.imageUrl ? (
@@ -253,7 +256,7 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
               loop muted={muted} playsInline
               autoPlay={isActive}
               preload={isActive ? 'auto' : 'metadata'}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#000' }}
             />
           ) : post.imageUrl ? (
             <img src={post.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }} />
@@ -393,6 +396,7 @@ export default function Reels() {
   const [likedIds,    setLikedIds]    = useState([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading,     setLoading]     = useState(true);
+  const [fetchingMore,setFetchingMore]= useState(false);
   const scrollRef                     = useRef(null);
 
   useEffect(() => {
@@ -425,6 +429,28 @@ export default function Reels() {
     items.forEach(item => obs.observe(item));
     return () => obs.disconnect();
   }, [posts]);
+
+  useEffect(() => {
+    if (posts.length > 0 && activeIndex >= posts.length - 3 && !fetchingMore) {
+      setFetchingMore(true);
+      fetch(`${API_URL}/api/feed`)
+        .then(r => r.json())
+        .then(newPosts => {
+          if (Array.isArray(newPosts)) {
+            setPosts(prev => {
+              // Yalnızca daha önce listede OLMAYAN (izlenmemiş) gönderileri al
+              const existingIds = new Set(prev.map(p => p._id?.toString()));
+              const uniqueNew = newPosts.filter(p => !existingIds.has(p._id?.toString()));
+              
+              if (uniqueNew.length === 0) return prev; // Yeni içerik kalmadıysa ekleme yapma
+              return [...prev, ...uniqueNew];
+            });
+          }
+        })
+        .catch(() => {})
+        .finally(() => setFetchingMore(false));
+    }
+  }, [activeIndex, posts.length, fetchingMore]);
 
   return (
     <div style={{
