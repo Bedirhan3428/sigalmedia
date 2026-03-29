@@ -1,1 +1,1 @@
-export const API_URL = "http://localhost:5000"; // Change this to your backend URL if different
+export const API_URL = "https://sigalmedia-backend-1.onrender.com"; // Change this to your backend URL if different
