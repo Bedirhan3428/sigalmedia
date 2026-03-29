@@ -1,453 +1,487 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, ImagePlus, X, AlertTriangle, CheckCircle, ShieldAlert, Shield, Dices } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import {
+  X, ImagePlus, Video, Loader2, Shield, ShieldAlert, Dices,
+  CheckCircle, AlertTriangle,
+} from 'lucide-react';
+import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { useAuth } from '../context/AuthContext';
 import { storage } from '../firebase';
-import Navbar from '../components/Navbar';
 import { API_URL } from '../apiConfig';
+import { compressImage, compressVideo, IMAGE_ACCEPT, VIDEO_ACCEPT } from '../utils/mediaCompressor';
+import ImageCropper from '../components/ImageCropper';
 
-const MAX_CHARS      = 280;
-const MAX_RAW_MB     = 10;
-const TARGET_WIDTH   = 1080;
-const TARGET_QUALITY = 0.78;
+const MAX_CHARS = 280;
+const MAX_VIDEO_MB = 50;
 
-// ─── Dönen placeholder metinleri ─────────────────────────────────────────
-const PLACEHOLDERS = [
-    'Uzaktan kesişmekten yoruldum, bi adım at artık.',
-    'Sence okuldaki platonik aşkım bana bakar mı, taktik?',
-    'Kantinde sürekli göz göze geldiğimiz o kişi, instanı sal.',
-    'Nöbetçiyken gördüğüm siyah kapüşonlu, vuruldum resmen.',
-    'Okulun en toksik çifti net ayrılmalı artık, çok yordunuz.',
-    'Yüzüme gülüp arkamdan sallayan o tayfa, her şeyi biliyorum :)',
-    'Kantin fiyatları şaka mı, tost için kredi mi çekelim?',
-    'Şu okulun internet şifresini bilen sevabına fısıldasın acil.',
-    'Eski sevgiliyle aynı koridorda yürümek harbiden büyük eziyet.',
-    'Sırf o kişiyle karşılaşmamak için yolumu uzatıyorum, net.',
-    'Sınavlardan çok bu okulun dedikodusu yordu beni yeminle.',
-    'Koridorda sürekli bağırarak konuşan o tayfa, başımız ağrıyor.',
-    'Admin bu kadar sırrı nasıl tutuyon, ben olsam patlardım.',
+const PROMPTS = [
+  'Ne düşünüyorsun?',
+  'Bugün ne oldu?',
+  'Okulda neler dönüyor?',
+  'Bir şey paylaş...',
+  'Kantin kuyruğu yine uzun mu?',
+  'O kişi yine baktı mı? 👀',
+  'Sınavdan kaç aldın? 😅',
+  'Bu hafta en iyi şey neydi?',
 ];
 
-function randomPlaceholder(current) {
-    const others = PLACEHOLDERS.filter(p => p !== current);
-    return others[Math.floor(Math.random() * others.length)];
+function randPrompt(cur) {
+  const others = PROMPTS.filter(p => p !== cur);
+  return others[Math.floor(Math.random() * others.length)];
 }
 
-// ─── Canvas sıkıştırma ────────────────────────────────────────────────────
-function compressImage(file) {
-    return new Promise((resolve, reject) => {
-        const img     = new Image();
-        const blobUrl = URL.createObjectURL(file);
-        img.onload = () => {
-            URL.revokeObjectURL(blobUrl);
-            let { width, height } = img;
-            if (width > TARGET_WIDTH) {
-                height = Math.round((height * TARGET_WIDTH) / width);
-                width  = TARGET_WIDTH;
-            }
-            const canvas = document.createElement('canvas');
-            canvas.width  = width;
-            canvas.height = height;
-            canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-            const outMime = file.type === 'image/png' ? 'image/jpeg' : (file.type || 'image/jpeg');
-            canvas.toBlob(
-                (blob) => {
-                    if (!blob) return reject(new Error('Canvas blob oluşturulamadı'));
-                    const sizeKB = Math.round(blob.size / 1024);
-                    const reader = new FileReader();
-                    reader.onload  = () => resolve({ dataUri: reader.result, sizeKB, mime: outMime });
-                    reader.onerror = () => reject(new Error('FileReader hatası'));
-                    reader.readAsDataURL(blob);
-                },
-                outMime,
-                TARGET_QUALITY
-            );
-        };
-        img.onerror = () => { URL.revokeObjectURL(blobUrl); reject(new Error('Görsel yüklenemedi')); };
-        img.src = blobUrl;
-    });
+// Upload progress ring
+function ProgressRing({ pct }) {
+  const r = 22, c = 2 * Math.PI * r;
+  return (
+    <svg width="60" height="60" style={{ transform: 'rotate(-90deg)' }}>
+      <circle cx="30" cy="30" r={r} fill="none" stroke="#262626" strokeWidth="4" />
+      <circle cx="30" cy="30" r={r} fill="none" stroke="#0095F6" strokeWidth="4"
+              strokeDasharray={c} strokeDashoffset={c * (1 - pct / 100)}
+              strokeLinecap="round" style={{ transition: 'stroke-dashoffset 0.2s' }} />
+      <text x="30" y="34" textAnchor="middle" fontSize="11" fill="#F5F5F5" fontWeight="700"
+            style={{ transform: 'rotate(90deg)', transformOrigin: '30px 30px' }}>
+        {Math.round(pct)}%
+      </text>
+    </svg>
+  );
 }
 
-// ─── nsfwjs ön denetim ────────────────────────────────────────────────────
-let _nsfwModel = null;
-async function frontendNsfwCheck(file) {
-    try {
-        if (!_nsfwModel) {
-            await import('@tensorflow/tfjs');
-            const nsfwjs = await import('nsfwjs');
-            _nsfwModel = await nsfwjs.load(
-  'https://s3.amazonaws.com/ir_public/nsfwjscdn/model/',
-  { type: 'graph' }
-);
-        }
-        const img     = new Image();
-        const blobUrl = URL.createObjectURL(file);
-        img.src = blobUrl;
-        await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
-        URL.revokeObjectURL(blobUrl);
-        const preds = await _nsfwModel.classify(img);
-        const bad   = preds.find(p =>
-            (p.className === 'Porn'   && p.probability > 0.6) ||
-            (p.className === 'Hentai' && p.probability > 0.7) ||
-            (p.className === 'Sexy'   && p.probability > 0.8)
-        );
-        return bad
-            ? { safe: false, reason: `Ön denetim: uygunsuz içerik (${bad.className} ${(bad.probability*100).toFixed(0)}%)` }
-            : { safe: true };
-    } catch {
-        return { safe: true };
-    }
-}
-
-// ─── Bileşen ──────────────────────────────────────────────────────────────
 export default function Share() {
-    const user     = useAuth();
-    const navigate = useNavigate();
+  const user     = useAuth();
+  const navigate = useNavigate();
 
-    const [content,      setContent]      = useState('');
-    const [placeholder,  setPlaceholder]  = useState(PLACEHOLDERS[0]);
-    const [preview,      setPreview]      = useState(null);
-    const [imageData,    setImageData]    = useState(null);
-    const [imageUrl,     setImageUrl]     = useState(null);
-    const [imagePath,    setImagePath]    = useState(null);
-    const [remaining,    setRemaining]    = useState(null);
-    const [status,       setStatus]       = useState({ type: '', msg: '' });
-    const [phase,        setPhase]        = useState('idle');
-    const [diceSpin,     setDiceSpin]     = useState(false);
+  const [content,   setContent]   = useState('');
+  const [prompt,    setPrompt]    = useState(PROMPTS[0]);
+  const [media,     setMedia]     = useState(null); // { type, previewUrl, file, origKB, newKB, duration? }
+  const [cropSrc,   setCropSrc]   = useState(null); // image crop flow
+  const [cropFile,  setCropFile]  = useState(null); // raw File for after crop
+  const [phase,     setPhase]     = useState('idle'); // idle|compressing|uploading|sending|done|error
+  const [progress,  setProgress]  = useState(0);
+  const [error,     setError]     = useState('');
+  const [remaining, setRemaining] = useState(3);
+  const [diceSpin,  setDiceSpin]  = useState(false);
 
-    const fileRef = useRef();
+  const imgRef = useRef();
+  const vidRef = useRef();
 
-    // Placeholder her 3 saniyede bir döner (textarea boşken)
-    useEffect(() => {
-        if (content.trim()) return; // yazı varken döndürme
-        const id = setInterval(() => {
-            setPlaceholder(prev => randomPlaceholder(prev));
-        }, 3000);
-        return () => clearInterval(id);
-    }, [content]);
+  const isVerified = user?.emailVerified;
+  const isBusy     = ['compressing','uploading','sending'].includes(phase);
+  const canPost    = (content.trim() || media) && remaining > 0 && !isBusy && phase !== 'done' && isVerified;
 
-    useEffect(() => {
-        if (!user?.uid) return;
-        fetch(`${API_URL}/api/user/${user.uid}`)
-            .then(r => r.json())
-            .then(d => setRemaining(d?.user?.dailyLimit ?? 3))
-            .catch(() => {});
-    }, [user]);
+  // Rotating prompt
+  useEffect(() => {
+    if (content.trim()) return;
+    const id = setInterval(() => setPrompt(p => randPrompt(p)), 3500);
+    return () => clearInterval(id);
+  }, [content]);
 
-    // ─── Zar: rastgele placeholder'ı inputa yaz ───────────────────────
-    const handleDice = () => {
-        if (remaining === 0 || isBusy) return;
-        setDiceSpin(true);
-        setTimeout(() => setDiceSpin(false), 500);
-        const picked = randomPlaceholder(content);
-        setContent(picked.slice(0, MAX_CHARS));
-    };
+  // Fetch remaining
+  useEffect(() => {
+    if (!user?.uid) return;
+    fetch(`${API_URL}/api/user/${user.uid}`)
+      .then(r => r.json())
+      .then(d => setRemaining(d?.user?.dailyLimit ?? 3))
+      .catch(() => {});
+  }, [user]);
 
-    // ─── Görsel seç & sıkıştır & yükle ──────────────────────────────
-    const handleFileChange = async (e) => {
-        const raw = e.target.files?.[0];
-        if (!raw) return;
+  // ── Resim seç → kırpıcı aç ────────────────────────────────────────────────
+  const handleImageFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setCropFile(file);
+    setCropSrc(URL.createObjectURL(file));
+  };
 
-        if (raw.size > MAX_RAW_MB * 1024 * 1024) {
-            setStatus({ type: 'error', msg: `Görsel çok büyük (maks. ${MAX_RAW_MB}MB).` });
+  // ── Kırpma tamamlandı → sıkıştır ─────────────────────────────────────────
+  const handleCropDone = async (blob) => {
+    const prevSrc = cropSrc;
+    setCropSrc(null);
+    setCropFile(null);
+    URL.revokeObjectURL(prevSrc);
+
+    if (!blob) return;
+    setPhase('compressing');
+    setError('');
+
+    try {
+      // blob'u File'a çevir, sonra compressImage ile işle
+      const rawFile = new File([blob], 'post.jpg', { type: 'image/jpeg' });
+      const result  = await compressImage(rawFile);
+      setMedia({
+        type:       'image',
+        previewUrl: result.url,
+        file:       result.file,
+        origKB:     result.origSizeKB,
+        newKB:      result.newSizeKB,
+      });
+      setPhase('idle');
+    } catch (err) {
+      setError('Görsel işlenemedi: ' + err.message);
+      setPhase('error');
+    }
+  };
+
+  // ── Video seç ─────────────────────────────────────────────────────────────
+  const handleVideoFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setPhase('compressing');
+    setError('');
+
+    // Manuel validasyon
+    const sizeMB = file.size / (1024 * 1024);
+    if (sizeMB > MAX_VIDEO_MB) {
+      setError(`Video çok büyük (maks. ${MAX_VIDEO_MB}MB, seçilen ${sizeMB.toFixed(1)}MB)`);
+      setPhase('error');
+      return;
+    }
+
+    try {
+      // Thumbnail extract
+      const thumbUrl = await new Promise((res) => {
+        const vid  = document.createElement('video');
+        const url  = URL.createObjectURL(file);
+        vid.onloadedmetadata = () => {
+          // Duration check
+          if (vid.duration > 90) {
+            URL.revokeObjectURL(url);
+            res(null); // will error below
             return;
+          }
+          vid.currentTime = Math.min(0.5, vid.duration * 0.1);
+        };
+        vid.onseeked = () => {
+          const c = document.createElement('canvas');
+          c.width  = Math.min(vid.videoWidth,  640);
+          c.height = Math.round(vid.videoHeight * (c.width / vid.videoWidth));
+          c.getContext('2d').drawImage(vid, 0, 0, c.width, c.height);
+          URL.revokeObjectURL(url);
+          res(c.toDataURL('image/jpeg', 0.75));
+        };
+        vid.onerror = () => { URL.revokeObjectURL(url); res(null); };
+        vid.preload  = 'metadata';
+        vid.src      = url;
+        vid.muted    = true;
+      });
+
+      if (thumbUrl === null) {
+        // ... (hata kontrolleri) ...
+        const dur = await new Promise(res => {
+          const v = document.createElement('video');
+          const u = URL.createObjectURL(file);
+          v.onloadedmetadata = () => { URL.revokeObjectURL(u); res(v.duration); };
+          v.onerror = () => { URL.revokeObjectURL(u); res(0); };
+          v.src = u; v.preload = 'metadata';
+        });
+        if (dur > 90) {
+          setError('Video çok uzun (maks. 90 saniye)');
+          setPhase('error');
+          return;
         }
+        setError('Video yüklenemedi. Farklı bir format dene (MP4 önerilen).');
+        setPhase('error');
+        return;
+      }
 
-        const blobPreview = URL.createObjectURL(raw);
-        setPreview(blobPreview);
-        setImageData(null);
-        setImageUrl(null);
-        setImagePath(null);
-        setStatus({ type: '', msg: '' });
+      // Sıkıştırma başlat...
+      let finalFile = file;
+      let newKB = Math.round(file.size / 1024);
+      let previewUrl = URL.createObjectURL(file);
+      
+      try {
+        const result = await compressVideo(file, (p) => {
+           setProgress(Math.round(p.ratio * 100));
+        });
+        finalFile = result.file;
+        newKB = Math.round(finalFile.size / 1024);
+        previewUrl = result.url;
+      } catch (err) {
+        console.warn('Video sıkıştırma hatası', err);
+      }
 
-        setPhase('compressing');
-        let compressed;
-        try {
-            compressed = await compressImage(raw);
-        } catch (err) {
-            clearImage(blobPreview);
-            setStatus({ type: 'error', msg: `Sıkıştırma hatası: ${err.message}` });
-            setPhase('idle');
-            return;
+      setMedia({
+        type:         'video',
+        previewUrl:   previewUrl,
+        thumbnailUrl: thumbUrl,
+        file:         finalFile,
+        origKB:       Math.round(file.size / 1024),
+        newKB:        newKB,
+      });
+      setPhase('idle');
+    } catch (err) {
+      setError('Video işlenemedi: ' + err.message);
+      setPhase('error');
+    }
+  };
+
+  const clearMedia = () => {
+    if (media?.previewUrl) URL.revokeObjectURL(media.previewUrl);
+    setMedia(null);
+    setPhase('idle');
+    setError('');
+  };
+
+  // ── Firebase Storage'a yükle (progress ile) ───────────────────────────────
+  const uploadToStorage = () => {
+    return new Promise((resolve, reject) => {
+      const isVideo = media.type === 'video';
+      const ext     = isVideo ? 'mp4' : 'jpg';
+      const folder  = isVideo ? 'videos' : 'images';
+      const mime    = isVideo ? 'video/mp4' : 'image/jpeg';
+      const path    = `tweets/${folder}/${user.uid}/${Date.now()}.${ext}`;
+      const sRef    = storageRef(storage, path);
+
+      const task = uploadBytesResumable(sRef, media.file, { contentType: mime });
+
+      task.on(
+        'state_changed',
+        (snap) => setProgress(Math.round(snap.bytesTransferred / snap.totalBytes * 100)),
+        (err)  => reject(err),
+        async () => {
+          const url = await getDownloadURL(task.snapshot.ref);
+          resolve({ imageUrl: url, imagePath: path });
         }
+      );
+    });
+  };
 
-        setPhase('nsfw-check');
-        const check = await frontendNsfwCheck(raw);
-        if (!check.safe) {
-            clearImage(blobPreview);
-            setStatus({ type: 'error', msg: `🚫 ${check.reason}` });
-            setPhase('idle');
-            return;
-        }
+  // ── Paylaş ────────────────────────────────────────────────────────────────
+  const handlePost = async () => {
+    if (!canPost) return;
+    setError('');
+    setProgress(0);
+    setPhase('uploading');
 
-        setPhase('uploading');
-        try {
-            const fetchRes = await fetch(compressed.dataUri);
-            const blob     = await fetchRes.blob();
-            const ext      = blob.type === 'image/png' ? 'png' : 'jpg';
-            const path     = `tweets/${user?.uid || 'anon'}/${Date.now()}.${ext}`;
-            const storRef  = ref(storage, path);
-            await uploadBytes(storRef, blob, { contentType: blob.type });
-            const url = await getDownloadURL(storRef);
-            setImageUrl(url);
-            setImagePath(path);
-            setImageData({ sizeKB: compressed.sizeKB, origKB: Math.round(raw.size / 1024) });
-            setPhase('idle');
-        } catch (err) {
-            clearImage(blobPreview);
-            setStatus({ type: 'error', msg: `Görsel yüklenemedi: ${err.message}` });
-            setPhase('idle');
-        }
-    };
+    try {
+      let imageUrl  = null;
+      let imagePath = null;
 
-    const clearImage = (blobUrl) => {
-        const urlToRevoke = blobUrl || preview;
-        if (urlToRevoke) URL.revokeObjectURL(urlToRevoke);
-        setPreview(null);
-        setImageData(null);
-        setImageUrl(null);
-        setImagePath(null);
-        if (fileRef.current) fileRef.current.value = '';
-    };
+      if (media) {
+        const result = await uploadToStorage();
+        imageUrl  = result.imageUrl;
+        imagePath = result.imagePath;
+      }
 
-    // ─── Tweet gönder ─────────────────────────────────────────────────
-    const handleSubmit = async () => {
-        if (!user?.uid || phase !== 'idle') return;
-        const hasText  = content.trim().length > 0;
-        const hasImage = !!imageUrl;
-        if (!hasText && !hasImage) return;
+      setPhase('sending');
 
-        setStatus({ type: '', msg: '' });
-        setPhase('sending');
+      const res  = await fetch(`${API_URL}/api/tweet`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          deviceId:  user.uid,
+          content:   content.trim(),
+          imageUrl,
+          imagePath,
+          mediaType: media?.type || null,
+        }),
+      });
+      const data = await res.json();
 
-        try {
-            const res  = await fetch(`${API_URL}/api/tweet`, {
-                method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({
-                    deviceId:  user.uid,
-                    content:   hasText  ? content.trim() : '',
-                    imageUrl:  hasImage ? imageUrl       : null,
-                    imagePath: hasImage ? imagePath      : null,
-                }),
-            });
-            const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Gönderi paylaşılamadı.');
+        setPhase('error');
+        return;
+      }
 
-            if (!res.ok) {
-                setStatus({ type: 'error', msg: data.error || 'Bir hata oluştu.' });
-                setPhase('error');
-            } else {
-                setStatus({ type: 'success', msg: '🎉 Tweet gönderildi!' });
-                setContent('');
-                clearImage();
-                setRemaining(data.remainingLimit);
-                setPhase('done');
-                setTimeout(() => navigate('/'), 1400);
-            }
-        } catch (err) {
-            console.error(err);
-            setStatus({ type: 'error', msg: 'Sunucuya ulaşılamadı.' });
-            setPhase('error');
-        }
-    };
+      setPhase('done');
+      setTimeout(() => navigate('/'), 900);
+    } catch (err) {
+      setError('Sunucuya bağlanılamadı: ' + err.message);
+      setPhase('error');
+    }
+  };
 
-    // ─── UI Hesapları ─────────────────────────────────────────────────
-    const charCount = content.length;
-    const charPct   = (charCount / MAX_CHARS) * 100;
-    const charColor = charCount > 260 ? '#f43f5e' : charCount > 220 ? '#f97316' : '#6366f1';
-    const isBusy    = ['compressing', 'nsfw-check', 'uploading', 'sending'].includes(phase);
-    const canPost   = (content.trim() || imageUrl) && remaining !== 0 && !isBusy && phase !== 'done';
+  return (
+    <div className="page" style={{ minHeight: '100dvh', background: '#000' }}>
+      {/* Kırpma popup */}
+      {cropSrc && (
+        <ImageCropper
+          src={cropSrc}
+          aspect={1}
+          onCrop={handleCropDone}
+          onCancel={() => { URL.revokeObjectURL(cropSrc); setCropSrc(null); setCropFile(null); }}
+        />
+      )}
 
-    const phaseLabel = {
-        compressing:  '🗜️ Görsel sıkıştırılıyor...',
-        'nsfw-check': '🔍 Ön güvenlik denetimi...',
-        uploading:    '☁️ Görsel yükleniyor...',
-        sending:      '🤖 Aegis analiz ediyor...',
-    }[phase] || null;
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <div style={{
+        position: 'sticky', top: 0, zIndex: 100,
+        background: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid #262626',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '11px 16px',
+        paddingTop: 'max(11px, env(safe-area-inset-top))',
+      }}>
+        <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: '#F5F5F5', cursor: 'pointer', minWidth: 40, minHeight: 40, display: 'flex', alignItems: 'center' }}>
+          <X size={24} />
+        </button>
+        <span style={{ fontWeight: 700, fontSize: 17, color: '#F5F5F5' }}>Yeni Gönderi</span>
+        <button onClick={handlePost} disabled={!canPost}
+                style={{ background: 'none', border: 'none', color: canPost ? '#0095F6' : '#363636', fontWeight: 700, fontSize: 15, cursor: canPost ? 'pointer' : 'not-allowed', fontFamily: 'inherit', minHeight: 40, padding: '0 4px' }}>
+          {isBusy ? <Loader2 size={18} className="spin" color="#0095F6" /> : 'Paylaş'}
+        </button>
+      </div>
 
-    return (
-        <div className="page-container">
-            <header className="page-header">
-                <h1>Paylaş</h1>
-                {remaining !== null && (
-                    <span className={`limit-badge ${remaining === 0 ? 'limit-badge--empty' : ''}`}>
-                        {remaining}/3 hak kaldı
-                    </span>
-                )}
-            </header>
-
-            <main style={{ padding: '1rem' }}>
-                {remaining === 0 && (
-                    <div className="alert alert--warn">
-                        <AlertTriangle size={16} />
-                        Bugünlük 3 tweet hakkın doldu. Yarın tekrar gel!
-                    </div>
-                )}
-
-                {status.msg && (
-                    <div className={`alert ${status.type === 'error' ? 'alert--error' : 'alert--success'}`}>
-                        {status.type === 'error' ? <AlertTriangle size={16} /> : <CheckCircle size={16} />}
-                        {status.msg}
-                    </div>
-                )}
-
-                {phaseLabel && (
-                    <div className="alert alert--checking">
-                        <span className="spinner-sm" style={{ borderTopColor: '#6366f1', borderColor: '#3730a3' }} />
-                        {phaseLabel}
-                    </div>
-                )}
-
-                <div className="share-box">
-                    <textarea
-                        className="share-textarea"
-                        placeholder={placeholder}
-                        value={content}
-                        onChange={e => setContent(e.target.value.slice(0, MAX_CHARS))}
-                        disabled={remaining === 0 || isBusy}
-                        rows={4}
-                    />
-
-                    {/* ── Görsel önizleme ── */}
-                    {preview && (
-                        <div className="image-preview-wrap" style={{ marginTop: '12px', borderRadius: '10px', overflow: 'hidden' }}>
-                            <img
-                                src={preview}
-                                alt="Önizleme"
-                                className="image-preview"
-                                style={{ display: 'block', width: '100%', maxHeight: '320px', objectFit: 'cover' }}
-                            />
-
-                            {/* Aegis Badge */}
-                            <div style={{
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                gap: '5px', padding: '5px 0',
-                                background: 'rgba(9,9,11,0.88)', backdropFilter: 'blur(6px)',
-                                borderTop: '1px solid rgba(99,102,241,0.15)',
-                            }}>
-                                <Shield size={9} color="#818cf8" />
-                                <span style={{ fontSize: '9px', fontFamily: "'DM Mono', monospace", color: '#818cf8', letterSpacing: '0.1em', fontWeight: 500 }}>
-                                    reviewed by aegis · sigal media
-                                </span>
-                            </div>
-
-                            {imageData && (
-                                <div className="image-size-badge">
-                                    {imageData.origKB !== imageData.sizeKB
-                                        ? `${imageData.origKB}KB → ${imageData.sizeKB}KB ✓`
-                                        : `${imageData.sizeKB}KB`}
-                                </div>
-                            )}
-                            {!isBusy && (
-                                <button className="image-remove-btn" onClick={() => clearImage()}>
-                                    <X size={14} />
-                                </button>
-                            )}
-                            {isBusy && (
-                                <div className="image-checking-overlay">
-                                    <span className="spinner-sm" />
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    <div className="share-footer">
-                        {/* Görsel ekle */}
-                        <button
-                            className="image-add-btn"
-                            onClick={() => fileRef.current?.click()}
-                            disabled={!!imageUrl || remaining === 0 || isBusy}
-                            title="Görsel ekle"
-                        >
-                            <ImagePlus size={18} />
-                        </button>
-                        <input
-                            ref={fileRef}
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            style={{ display: 'none' }}
-                            onChange={handleFileChange}
-                        />
-
-                        {/* 🎲 Zar butonu */}
-                        <button
-                            onClick={handleDice}
-                            disabled={remaining === 0 || isBusy}
-                            title="Rastgele ilham al"
-                            style={{
-                                display:         'flex',
-                                alignItems:      'center',
-                                justifyContent:  'center',
-                                width:           34,
-                                height:          34,
-                                borderRadius:    '9px',
-                                background:      'rgba(99,102,241,0.08)',
-                                border:          '1px solid rgba(99,102,241,0.2)',
-                                cursor:          remaining === 0 || isBusy ? 'not-allowed' : 'pointer',
-                                color:           '#818cf8',
-                                flexShrink:      0,
-                                transition:      'all 0.15s',
-                                transform:       diceSpin ? 'rotate(180deg) scale(1.15)' : 'rotate(0deg) scale(1)',
-                            }}
-                        >
-                            <Dices size={16} />
-                        </button>
-
-                        {/* Karakter sayacı */}
-                        <svg width="28" height="28" viewBox="0 0 28 28" style={{ marginLeft: 'auto' }}>
-                            <circle cx="14" cy="14" r="11" fill="none" stroke="#27272a" strokeWidth="3" />
-                            <circle
-                                cx="14" cy="14" r="11" fill="none"
-                                stroke={charColor} strokeWidth="3"
-                                strokeDasharray={`${2 * Math.PI * 11}`}
-                                strokeDashoffset={`${2 * Math.PI * 11 * (1 - charPct / 100)}`}
-                                strokeLinecap="round"
-                                transform="rotate(-90 14 14)"
-                                style={{ transition: 'stroke-dashoffset 0.2s, stroke 0.2s' }}
-                            />
-                            {charCount > 220 && (
-                                <text x="14" y="18" textAnchor="middle" fontSize="7" fill={charColor} fontWeight="bold">
-                                    {MAX_CHARS - charCount}
-                                </text>
-                            )}
-                        </svg>
-
-                        <button className="send-btn" onClick={handleSubmit} disabled={!canPost}>
-                            {isBusy ? <span className="spinner-sm" /> : <><Send size={16} />Paylaş</>}
-                        </button>
-                    </div>
-
-                    {/* Aegis imzası */}
-                    <div style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        gap: '5px', paddingTop: '10px',
-                        borderTop: '1px solid rgba(99,102,241,0.1)', marginTop: '10px',
-                    }}>
-                        <Shield size={10} color="#6366f140" />
-                        <span style={{ fontSize: '9.5px', fontFamily: "'DM Mono', monospace", color: '#6366f155', letterSpacing: '0.08em' }}>
-                            protected by aegis · sigal media content shield
-                        </span>
-                    </div>
-                </div>
-
-                <div className="share-rules">
-                    <div className="rule-row">
-                        <ShieldAlert size={13} color="#6366f1" />
-                        <span>Paylaşımlar Aegis YZ denetiminden geçer.</span>
-                    </div>
-                    <div className="rule-row">
-                        <ShieldAlert size={13} color="#f97316" />
-                        <span>Çıplaklık, şiddet veya kişisel bilgi → otomatik reddedilir.</span>
-                    </div>
-                    <div className="rule-row">
-                        <ShieldAlert size={13} color="#f43f5e" />
-                        <span>DM ss paylaşıyorsan <strong>isimleri karalayarak</strong> gönder (KVKK).</span>
-                    </div>
-                </div>
-            </main>
-
-            <Navbar />
+      {/* Doğrulama uyarısı */}
+      {!isVerified && (
+        <div style={{ padding: '10px 16px', background: 'rgba(252,175,69,0.08)', borderBottom: '1px solid rgba(252,175,69,0.25)', fontSize: 13, color: '#FCAF45' }}>
+          ⚠️ Gönderi paylaşmak için e-postanı doğrula.
         </div>
-    );
+      )}
+
+      {/* Limit uyarısı */}
+      {remaining === 0 && (
+        <div style={{ padding: '10px 16px', background: 'rgba(255,48,64,0.08)', borderBottom: '1px solid rgba(255,48,64,0.2)', fontSize: 13, color: '#FF6B7A' }}>
+          Bugünlük 3 gönderi hakkın doldu. Yarın tekrar gel!
+        </div>
+      )}
+
+      {/* ── İçerik alanı ──────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px' }}>
+        <div style={{ width: 38, height: 38, borderRadius: '50%', background: '#1C1C1C', flexShrink: 0 }} />
+        <textarea
+          value={content}
+          onChange={e => setContent(e.target.value.slice(0, MAX_CHARS))}
+          placeholder={prompt}
+          disabled={isBusy || remaining === 0 || !isVerified}
+          rows={4}
+          style={{
+            flex: 1, background: 'transparent', border: 'none',
+            color: '#F5F5F5', fontSize: 16, fontFamily: 'inherit',
+            outline: 'none', resize: 'none', lineHeight: 1.55,
+            minHeight: 100,
+          }}
+        />
+      </div>
+
+      {/* ── Medya önizleme ─────────────────────────────────────────────────── */}
+      {media && (
+        <div style={{ margin: '0 0 2px', position: 'relative', background: '#1C1C1C', maxHeight: 400, overflow: 'hidden' }}>
+          {media.type === 'image'
+            ? <img src={media.previewUrl} alt="" style={{ width: '100%', maxHeight: 400, objectFit: 'cover', display: 'block' }} />
+            : <video src={media.previewUrl} controls playsInline style={{ width: '100%', maxHeight: 400, display: 'block', background: '#000' }} />
+          }
+
+          {/* Sıkıştırma bilgisi */}
+          {media.origKB && media.newKB && media.origKB !== media.newKB && (
+            <div style={{ position: 'absolute', bottom: 8, left: 8, background: 'rgba(0,0,0,0.65)', borderRadius: 4, padding: '3px 8px', fontSize: 11, color: '#a5b4fc' }}>
+              {media.origKB}KB → {media.newKB}KB ✓
+            </div>
+          )}
+
+          {!isBusy && (
+            <button onClick={clearMedia} style={{ position: 'absolute', top: 8, right: 8, width: 30, height: 30, borderRadius: '50%', background: 'rgba(0,0,0,0.7)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X size={15} />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── Upload & Compress progress ──────────────────────────────────────── */}
+      {phase === 'compressing' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', borderTop: '1px solid #262626' }}>
+          <ProgressRing pct={progress} />
+          <span style={{ fontSize: 14, color: '#A8A8A8' }}>
+            Video sıkıştırılıyor (veri tasarrufu)...
+          </span>
+        </div>
+      )}
+      {phase === 'uploading' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', borderTop: '1px solid #262626' }}>
+          <ProgressRing pct={progress} />
+          <span style={{ fontSize: 14, color: '#A8A8A8' }}>
+            {media?.type === 'video' ? 'Video' : 'Fotoğraf'} yükleniyor...
+          </span>
+        </div>
+      )}
+      {phase === 'sending' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderTop: '1px solid #262626', color: '#0095F6' }}>
+          <Loader2 size={16} className="spin" /> Aegis analiz ediyor...
+        </div>
+      )}
+      {phase === 'done' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderTop: '1px solid #262626', color: '#1DB954' }}>
+          <CheckCircle size={16} /> Paylaşıldı! Ana sayfaya dönülüyor...
+        </div>
+      )}
+
+      {/* Hata */}
+      {error && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', background: 'rgba(255,48,64,0.08)', borderTop: '1px solid rgba(255,48,64,0.2)', fontSize: 13, color: '#FF6B7A' }}>
+          <AlertTriangle size={14} style={{ flexShrink: 0 }} /> {error}
+          {phase === 'error' && (
+            <button onClick={() => setPhase('idle')} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#FF6B7A', cursor: 'pointer', textDecoration: 'underline', fontSize: 13, fontFamily: 'inherit' }}>
+              Tekrar Dene
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── Araç çubuğu ────────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '10px 12px', borderTop: '1px solid #262626', position: 'sticky', bottom: 0, background: '#000' }}>
+        {/* Resim */}
+        <button
+          onClick={() => imgRef.current?.click()}
+          disabled={!!media || isBusy || remaining === 0 || !isVerified}
+          style={{ background: 'none', border: 'none', color: !!media || isBusy ? '#363636' : '#F5F5F5', cursor: !!media ? 'not-allowed' : 'pointer', padding: 8, minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, opacity: !!media ? 0.35 : 1 }}
+          title="Fotoğraf ekle"
+        >
+          <ImagePlus size={24} />
+        </button>
+        <input ref={imgRef} type="file" accept={IMAGE_ACCEPT} style={{ display: 'none' }} onChange={handleImageFile} />
+
+        {/* Video */}
+        <button
+          onClick={() => vidRef.current?.click()}
+          disabled={!!media || isBusy || remaining === 0 || !isVerified}
+          style={{ background: 'none', border: 'none', color: !!media || isBusy ? '#363636' : '#F5F5F5', cursor: !!media ? 'not-allowed' : 'pointer', padding: 8, minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, opacity: !!media ? 0.35 : 1 }}
+          title="Video ekle (maks. 90sn)"
+        >
+          <Video size={24} />
+        </button>
+        <input ref={vidRef} type="file" accept={VIDEO_ACCEPT} style={{ display: 'none' }} onChange={handleVideoFile} />
+
+        {/* Zar */}
+        <button
+          onClick={() => {
+            setDiceSpin(true);
+            setTimeout(() => setDiceSpin(false), 500);
+            setContent(randPrompt(content).slice(0, MAX_CHARS));
+          }}
+          disabled={isBusy || remaining === 0 || !isVerified}
+          style={{ background: 'none', border: 'none', color: isBusy ? '#363636' : '#F5F5F5', cursor: 'pointer', padding: 8, minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, transform: diceSpin ? 'rotate(180deg)' : 'none', transition: 'transform 0.4s', opacity: isBusy ? 0.35 : 1 }}
+          title="Rastgele ilham"
+        >
+          <Dices size={22} />
+        </button>
+
+        {/* Karakter sayacı */}
+        <div style={{ marginLeft: 'auto', fontSize: 12, color: content.length > 260 ? '#FF3040' : content.length > 220 ? '#FCAF45' : '#737373', fontFamily: 'inherit', fontWeight: content.length > 220 ? 700 : 400 }}>
+          {MAX_CHARS - content.length}
+        </div>
+
+        {/* Aegis */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginLeft: 6 }}>
+          <Shield size={12} color="#363636" />
+          <span style={{ fontSize: 10, color: '#363636', fontFamily: 'inherit' }}>Aegis</span>
+        </div>
+      </div>
+
+      {/* Kurallar */}
+      <div style={{ margin: '0 16px 24px', padding: '12px 14px', background: '#121212', borderRadius: 10, border: '1px solid #262626', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {[
+          { icon: <ShieldAlert size={13} color="#0095F6" />, text: 'Her gönderi Aegis YZ denetiminden geçer.' },
+          { icon: <ShieldAlert size={13} color="#FCAF45" />, text: 'Çıplaklık ve şiddet otomatik reddedilir.' },
+          { icon: <ShieldAlert size={13} color="#FF3040" />, text: 'DM ekranı görüntüsünde isimleri karalayarak paylaş (KVKK).' },
+        ].map(({ icon, text }, i) => (
+          <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, color: '#737373' }}>
+            <span style={{ marginTop: 1, flexShrink: 0 }}>{icon}</span> {text}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }

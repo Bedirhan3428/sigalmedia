@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, AlertTriangle, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import TweetCard from '../components/TweetCard';
+
+import PostCard from '../components/PostCard';
 import Navbar from '../components/Navbar';
 import { API_URL } from '../apiConfig';
 
@@ -19,18 +20,21 @@ export default function PostDetail() {
     const [likedTweetIds,   setLikedTweetIds]   = useState([]);
     const [likedCommentIds, setLikedCommentIds] = useState([]);
     const [followingIds,    setFollowingIds]    = useState([]);
+    const [savedIds,        setSavedIds]        = useState([]);
 
-    // ── Beğeni + takip ID'leri ─────────────────────────────────────────────
+    // ── Beğeni + takip + kayıt ID'leri ──────────────────────────────────────
     useEffect(() => {
         if (!user?.uid) return;
         Promise.all([
             fetch(`${API_URL}/api/liked-ids/${user.uid}`).then(r => r.json()),
             fetch(`${API_URL}/api/following-ids/${user.uid}`).then(r => r.json()),
+            fetch(`${API_URL}/api/saved-ids/${user.uid}`).then(r => r.json()),
         ])
-            .then(([likeData, followData]) => {
+            .then(([likeData, followData, saveData]) => {
                 setLikedTweetIds(likeData.tweetIds     || []);
                 setLikedCommentIds(likeData.commentIds || []);
                 setFollowingIds(followData.followingIds || []);
+                setSavedIds(saveData.savedIds || []);
             })
             .catch(() => {});
     }, [user]);
@@ -61,34 +65,39 @@ export default function PostDetail() {
     };
 
     return (
-        <div className="page-container">
+        <div className="page">
             {/* Header */}
-            <header className="page-header">
+            <header style={{
+                position: 'sticky', top: 0, zIndex: 100,
+                background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(12px)',
+                borderBottom: '1px solid #262626',
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '10px 16px',
+                paddingTop: 'max(10px, env(safe-area-inset-top))',
+            }}>
                 <button
                     onClick={() => navigate(-1)}
                     style={{
-                        display: 'flex', alignItems: 'center', gap: '6px',
+                        display: 'flex', alignItems: 'center', gap: 6,
                         background: 'none', border: 'none', cursor: 'pointer',
-                        color: '#a1a1aa', fontSize: '14px', padding: '4px 0',
+                        color: '#F5F5F5', fontSize: 14, padding: '4px 0',
                     }}
                 >
                     <ArrowLeft size={18} />
                     <span>Geri</span>
                 </button>
-                <div className="header-title" style={{ marginLeft: '12px' }}>
-                    <h1 style={{ fontSize: '1rem' }}>Gönderi</h1>
-                </div>
+                <span style={{ fontWeight: 700, fontSize: 16, marginLeft: 8 }}>Gönderi</span>
             </header>
 
-            <main style={{ paddingTop: '8px' }}>
+            <main style={{ paddingTop: 8 }}>
                 {loading && (
                     <div style={{
                         display: 'flex', flexDirection: 'column',
                         alignItems: 'center', justifyContent: 'center',
-                        gap: '12px', padding: '4rem 0', color: '#52525b',
+                        gap: 12, padding: '4rem 0', color: '#737373',
                     }}>
-                        <Loader2 size={28} style={{ animation: 'spin 1s linear infinite' }} />
-                        <span style={{ fontSize: '13px' }}>Yükleniyor...</span>
+                        <Loader2 size={28} className="spin" />
+                        <span style={{ fontSize: 13 }}>Yükleniyor...</span>
                     </div>
                 )}
 
@@ -96,17 +105,18 @@ export default function PostDetail() {
                     <div style={{
                         display: 'flex', flexDirection: 'column',
                         alignItems: 'center', justifyContent: 'center',
-                        gap: '12px', padding: '4rem 1rem', textAlign: 'center',
+                        gap: 12, padding: '4rem 1rem', textAlign: 'center',
                     }}>
-                        <AlertTriangle size={32} color="#f97316" />
-                        <p style={{ fontWeight: 700, color: '#e4e4e7', margin: 0 }}>Gönderi bulunamadı</p>
-                        <p style={{ fontSize: '13px', color: '#71717a', margin: 0 }}>{error}</p>
+                        <AlertTriangle size={32} color="#FCAF45" />
+                        <p style={{ fontWeight: 700, color: '#F5F5F5', margin: 0 }}>Gönderi bulunamadı</p>
+                        <p style={{ fontSize: 13, color: '#737373', margin: 0 }}>{error}</p>
                         <button
                             onClick={() => navigate('/')}
                             style={{
-                                marginTop: '8px', padding: '8px 20px', borderRadius: '10px',
-                                background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)',
-                                color: '#818cf8', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                                marginTop: 8, padding: '8px 20px', borderRadius: 10,
+                                background: 'rgba(0,149,246,0.1)', border: '1px solid rgba(0,149,246,0.3)',
+                                color: '#0095F6', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                                fontFamily: 'inherit',
                             }}
                         >
                             Ana Sayfaya Dön
@@ -115,19 +125,23 @@ export default function PostDetail() {
                 )}
 
                 {!loading && tweet && (
-                    <TweetCard
-                        tweet={tweet}
+                    <PostCard
+                        post={tweet}
                         deviceId={user?.uid}
                         likedTweetIds={likedTweetIds}
                         likedCommentIds={likedCommentIds}
                         followingIds={followingIds}
+                        savedTweetIds={savedIds}
                         onDelete={() => navigate('/')}
                         onFollowChange={handleFollowChange}
+                        onSaveChange={(id, isSaved) => setSavedIds(prev =>
+                            isSaved ? [...prev, id] : prev.filter(x => x !== id)
+                        )}
                     />
                 )}
             </main>
 
-            <div style={{ height: '80px' }} />
+            <div className="nav-spacer" />
             <Navbar />
         </div>
     );

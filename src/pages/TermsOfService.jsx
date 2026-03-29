@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, FileText } from 'lucide-react';
-import '../styles/auth.css';
+
 
 export default function TermsOfService() {
   const navigate = useNavigate();
