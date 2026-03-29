@@ -21,29 +21,29 @@ function timeLabel(ts) {
 
 function dayLabel(ts) {
   if (!ts) return '';
-  const d     = new Date(ts);
-  const today = new Date(); today.setHours(0,0,0,0);
-  const diff  = Math.floor((today - d) / 86400000);
-  if (diff === 0)  return 'Bugün';
-  if (diff === 1)  return 'Dün';
+  const d = new Date(ts);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const diff = Math.floor((today - d) / 86400000);
+  if (diff === 0) return 'Bugün';
+  if (diff === 1) return 'Dün';
   return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
 }
 
 export default function ChatPage() {
-  const { partnerUid }  = useParams();
-  const user            = useAuth();
-  const navigate        = useNavigate();
-  const messagesEndRef  = useRef(null);
-  const fileRef         = useRef();
+  const { partnerUid } = useParams();
+  const user = useAuth();
+  const navigate = useNavigate();
+  const messagesEndRef = useRef(null);
+  const fileRef = useRef();
 
-  const [partner,     setPartner]     = useState(null);
-  const [convId,      setConvId]      = useState(null);
-  const [messages,    setMessages]    = useState([]);
-  const [text,        setText]        = useState('');
-  const [sending,     setSending]     = useState(false);
+  const [partner, setPartner] = useState(null);
+  const [convId, setConvId] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
   const [imagePreview, setImagePreview] = useState(null); // { file, url }
-  const [loading,     setLoading]     = useState(true);
-  const [myProfile,   setMyProfile]   = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [myProfile, setMyProfile] = useState(null);
 
   // Load partner profile + create/get conversation
   useEffect(() => {
@@ -59,7 +59,7 @@ export default function ChatPage() {
       setMyProfile(m);
 
       const cid = await getOrCreateConversation(user.uid, partnerUid, {
-        username:  p.username,
+        username: p.username,
         avatarUrl: p.avatarUrl || null,
       });
       setConvId(cid);
@@ -76,7 +76,7 @@ export default function ChatPage() {
       scrollToBottom();
     });
 
-    markMessagesRead(convId, user.uid).catch(() => {});
+    markMessagesRead(convId, user.uid).catch(() => { });
 
     return unsub;
   }, [convId, user?.uid]);
@@ -126,22 +126,48 @@ export default function ChatPage() {
     try {
       const { file: compressed, url } = await compressImage(file);
       setImagePreview({ file: compressed, url });
-    } catch {}
+    } catch { }
     e.target.value = '';
   };
 
-  // Group messages by day
+  // Group messages by day + mark position in each sender streak
   const grouped = [];
   let lastDay = null;
-  messages.forEach((msg) => {
-    const ts  = msg.timestamp || 0;
+  let lastSenderId = null;
+  messages.forEach((msg, i) => {
+    const ts = msg.timestamp || 0;
     const day = new Date(ts).toDateString();
     if (day !== lastDay) {
       grouped.push({ type: 'day', label: dayLabel(ts), key: `day-${ts}` });
       lastDay = day;
+      lastSenderId = null;
     }
-    grouped.push({ type: 'msg', ...msg });
+    const nextMsg = messages[i + 1];
+    const isFirstInStreak = msg.senderId !== lastSenderId;
+    const isLastInStreak = !nextMsg || nextMsg.senderId !== msg.senderId
+      || new Date(nextMsg.timestamp || 0).toDateString() !== day;
+    lastSenderId = msg.senderId;
+    grouped.push({ type: 'msg', ...msg, isFirstInStreak, isLastInStreak });
   });
+
+  // Returns border-radius based on position in streak
+  // CSS order: top-left, top-right, bottom-right, bottom-left
+  const R = 18; // full
+  const r = 4;  // tight / connected
+  function bubbleRadius(isMine, isFirst, isLast) {
+    if (isFirst && isLast) return `${R}px ${R}px ${R}px ${R}px`; // single
+    if (isMine) {
+      // right side — connector on the right
+      if (isFirst) return `${R}px ${R}px ${r}px ${R}px`;
+      if (isLast) return `${R}px ${r}px ${R}px ${R}px`;
+      return `${R}px ${r}px ${r}px ${R}px`;
+    } else {
+      // left side — connector on the left
+      if (isFirst) return `${R}px ${R}px ${R}px ${r}px`;
+      if (isLast) return `${r}px ${R}px ${R}px ${R}px`;
+      return `${r}px ${R}px ${R}px ${r}px`;
+    }
+  }
 
   if (loading) return (
     <div className="page">
@@ -161,12 +187,12 @@ export default function ChatPage() {
           {partner?.avatarUrl
             ? <img src={partner.avatarUrl} alt="" className="chat-header-avatar" />
             : <div style={{
-                width: 34, height: 34, borderRadius: '50%', background: 'var(--surface-3)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 14, fontWeight: 700, flexShrink: 0,
-              }}>
-                {(partner?.username || '?').charAt(0).toUpperCase()}
-              </div>
+              width: 34, height: 34, borderRadius: '50%', background: 'var(--surface-3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 14, fontWeight: 700, flexShrink: 0,
+            }}>
+              {(partner?.username || '?').charAt(0).toUpperCase()}
+            </div>
           }
           <div>
             <div className="chat-header-name">{partner?.username || 'Kullanıcı'}</div>
@@ -188,29 +214,47 @@ export default function ChatPage() {
           }
 
           const isMine = item.senderId === user.uid;
+          const showAvatar = !isMine && item.isFirstInStreak;
+          const radius = bubbleRadius(isMine, item.isFirstInStreak, item.isLastInStreak);
+          // Tighter spacing within a streak, more breathing room between groups
+          const marginBottom = item.isLastInStreak ? 8 : 2;
 
           return (
-            <div key={item.id} className={`chat-msg-row ${isMine ? 'chat-msg-row--mine' : ''}`}>
+            <div
+              key={item.id}
+              className={`chat-msg-row ${isMine ? 'chat-msg-row--mine' : ''}`}
+              style={{ marginBottom }}
+            >
+              {/* Avatar slot */}
               {!isMine && (
-                partner?.avatarUrl
-                  ? <img src={partner.avatarUrl} alt="" className="chat-msg-avatar" />
-                  : <div className="chat-msg-avatar" style={{ background: 'var(--surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>
+                showAvatar ? (
+                  partner?.avatarUrl
+                    ? <img src={partner.avatarUrl} alt="" className="chat-msg-avatar" />
+                    : <div className="chat-msg-avatar" style={{ background: 'var(--surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>
                       {(partner?.username || '?').charAt(0).toUpperCase()}
                     </div>
+                ) : (
+                  <div className="chat-msg-avatar" style={{ visibility: 'hidden' }} />
+                )
               )}
 
               {item.imageUrl ? (
-                <div className={`chat-bubble-img ${isMine ? '' : ''}`}>
+                <div className="chat-bubble-img" style={{ borderRadius: radius, overflow: 'hidden' }}>
                   <img src={item.imageUrl} alt="" />
                   {item.text && (
-                    <div className={`chat-bubble ${isMine ? 'chat-bubble--mine' : 'chat-bubble--theirs'}`}
-                         style={{ borderRadius: '0 0 18px 18px', borderTop: 'none' }}>
+                    <div
+                      className={`chat-bubble ${isMine ? 'chat-bubble--mine' : 'chat-bubble--theirs'}`}
+                      style={{ borderRadius: '0 0 18px 18px', borderTop: 'none' }}
+                    >
                       {item.text}
                     </div>
                   )}
                 </div>
               ) : (
-                <div className={`chat-bubble ${isMine ? 'chat-bubble--mine' : 'chat-bubble--theirs'}`}>
+                <div
+                  className={`chat-bubble ${isMine ? 'chat-bubble--mine' : 'chat-bubble--theirs'}`}
+                  style={{ borderRadius: radius }}
+                >
                   {item.text}
                 </div>
               )}
@@ -225,8 +269,8 @@ export default function ChatPage() {
             {partner?.avatarUrl
               ? <img src={partner.avatarUrl} alt="" style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover' }} />
               : <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 700 }}>
-                  {(partner?.username || '?').charAt(0).toUpperCase()}
-                </div>
+                {(partner?.username || '?').charAt(0).toUpperCase()}
+              </div>
             }
             <div style={{ fontWeight: 700, fontSize: 17 }}>{partner?.username}</div>
             <div style={{ color: 'var(--text-2)', fontSize: 14, textAlign: 'center' }}>

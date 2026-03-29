@@ -11,7 +11,7 @@ export function getConvId(uid1, uid2) {
 }
 
 // ─── START OR GET CONVERSATION ───────────────────────────────────────────────
-export async function getOrCreateConversation(myUid, theirUid, theirProfile) {
+export async function getOrCreateConversation(myUid, theirUid, theirProfile, myProfile) {
   const convId   = getConvId(myUid, theirUid);
   const convRef  = ref(rtdb, `conversations/${convId}`);
   const snapshot = await get(convRef);
@@ -27,8 +27,8 @@ export async function getOrCreateConversation(myUid, theirUid, theirProfile) {
           avatarUrl: theirProfile.avatarUrl || null,
         },
         [myUid]: {
-          username:  null, // filled by caller
-          avatarUrl: null,
+          username:  myProfile?.username || null,
+          avatarUrl: myProfile?.avatarUrl || null,
         }
       }
     });
@@ -58,6 +58,9 @@ export async function sendMessage(convId, senderId, content) {
     ...(videoUrl && { videoUrl }),
   };
 
+  const [uid1, uid2] = convId.split('__');
+  const partnerId = (uid1 === senderId ? uid2 : uid1);
+
   await Promise.all([
     set(msgRef, msg),
     update(ref(rtdb, `conversations/${convId}`), {
@@ -65,9 +68,13 @@ export async function sendMessage(convId, senderId, content) {
         text:      text || (type === 'image' ? '📷 Fotoğraf' : '🎬 Video'),
         senderId,
         timestamp: serverTimestamp(),
+        read:      false,
       }
     }),
     update(ref(rtdb, `userConversations/${senderId}/${convId}`), {
+      updatedAt: Date.now(),
+    }),
+    update(ref(rtdb, `userConversations/${partnerId}/${convId}`), {
       updatedAt: Date.now(),
     }),
   ]);
@@ -172,4 +179,21 @@ export function subscribeToUnreadCount(myUid, callback) {
   });
 
   return () => off(userConvsRef, 'value', unsub);
+}
+
+// ─── TYPING STATUS ────────────────────────────────────────────────────────────
+export function subscribeToTypingStatus(convId, partnerUid, callback) {
+  if (!convId || !partnerUid) return () => {};
+  const typingRef = ref(rtdb, `typingStatus/${convId}/${partnerUid}`);
+  const unsub = onValue(typingRef, (snapshot) => {
+    callback(!!snapshot.val());
+  });
+  return () => off(typingRef, 'value', unsub);
+}
+
+export async function setTypingStatus(convId, myUid, isTyping) {
+  if (!convId || !myUid) return;
+  const typingRef = ref(rtdb, `typingStatus/${convId}/${myUid}`);
+  // Use set directly so it updates instantly
+  await set(typingRef, isTyping);
 }
