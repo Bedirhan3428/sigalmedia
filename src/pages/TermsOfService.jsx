@@ -141,7 +141,6 @@ function Item({ title, children }) {
 
 // ─── Stiller ─────────────────────────────────────
 const pageStyle = {
-  minHeight: '100vh',
   minHeight: '100dvh',
   backgroundColor: '#05050a',
   color: '#f1f1f5',

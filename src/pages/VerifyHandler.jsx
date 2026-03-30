@@ -49,7 +49,7 @@ export default function VerifyHandler() {
   const handleCustomVerifyEmail = async (token, uid) => {
     setStatus('Mail doğrulanıyor...');
     try {
-      const resp = await fetch(`${API_URL}/auth/verify?token=${token}&uid=${uid}`);
+      const resp = await fetch(`${API_URL}/api/auth/verify?token=${token}&uid=${uid}`);
       const data = await resp.json();
 
       if (data.success) {
