@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import { applyActionCode, verifyPasswordResetCode, confirmPasswordReset } from 'firebase/auth';
+import { API_URL } from '../apiConfig';
 
 export default function VerifyHandler() {
   const [searchParams] = useSearchParams();
@@ -15,6 +16,15 @@ export default function VerifyHandler() {
     // Firebase'in gönderdiği action kodu ve işlem türünü (mode) alıyoruz
     const actionCode = searchParams.get('oobCode');
     const actionMode = searchParams.get('mode');
+    
+    // Özel Backend Tokenları (E-posta doğrulama için)
+    const customToken = searchParams.get('token');
+    const customUid   = searchParams.get('uid');
+
+    if (customToken && customUid) {
+      handleCustomVerifyEmail(customToken, customUid);
+      return;
+    }
 
     if (!actionCode || !actionMode) {
       setStatus('Geçersiz veya eksik link.');
@@ -24,7 +34,6 @@ export default function VerifyHandler() {
     setOobCode(actionCode);
     setMode(actionMode);
 
-    // İşlem türüne göre hem URL'i senin istediğin gibi değiştiriyoruz hem de fonksiyonu tetikliyoruz
     if (actionMode === 'verifyEmail') {
       window.location.hash = 'verifyemail';
       handleVerifyEmail(actionCode);
@@ -35,6 +44,25 @@ export default function VerifyHandler() {
       setStatus('Geçersiz işlem türü.');
     }
   }, [searchParams, navigate]);
+
+  // 0. Özel Backend Doğrulama (Resend + MongoDB)
+  const handleCustomVerifyEmail = async (token, uid) => {
+    setStatus('Mail doğrulanıyor...');
+    try {
+      const resp = await fetch(`${API_URL}/auth/verify?token=${token}&uid=${uid}`);
+      const data = await resp.json();
+
+      if (data.success) {
+        setStatus('Mail başarıyla doğrulandı! Yönlendiriliyorsun...');
+        setTimeout(() => navigate('/'), 2000);
+      } else {
+        setStatus(data.error || 'Doğrulama başarısız oldu.');
+      }
+    } catch (err) {
+      console.error(err);
+      setStatus('Sunucuyla iletişim kurulamadı.');
+    }
+  };
 
   // 1. E-posta Doğrulama İşlemi
   const handleVerifyEmail = (code) => {

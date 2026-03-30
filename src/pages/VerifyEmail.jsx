@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { auth } from '../firebase';
 import { reload } from 'firebase/auth';
 import { Mail, CheckCircle2, RefreshCw, LogIn } from 'lucide-react';
@@ -8,9 +8,19 @@ import { Mail, CheckCircle2, RefreshCw, LogIn } from 'lucide-react';
 
 
 export default function VerifyEmail() {
-  const [checking, setChecking] = useState(false);
-  const [status, setStatus]     = useState({ type: '', msg: '' });
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const [checking, setChecking] = useState(false);
+  
+  const initialStatus = () => {
+    const s = searchParams.get('status');
+    if (s === 'invalid') return { type: 'error', msg: 'Geçersiz veya eksik doğrulama linki.' };
+    if (s === 'expired') return { type: 'error', msg: 'Doğrulama linkinin süresi dolmuş.' };
+    if (s === 'error')   return { type: 'error', msg: 'Doğrulama sırasında bir hata oluştu.' };
+    return { type: '', msg: '' };
+  };
+
+  const [status, setStatus] = useState(initialStatus);
 
   const checkVerification = async () => {
     setChecking(true);
