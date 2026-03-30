@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Home() {
@@ -83,9 +83,9 @@ export default function Home() {
 
         <footer className="landing-footer">
           <div className="footer-links">
-            <button onClick={() => navigate('/privacy-policy')}>Gizlilik</button>
-            <button onClick={() => navigate('/terms-of-service')}>Şartlar</button>
-            <button onClick={() => navigate('/safety')}>Güvenlik</button>
+            <Link to="/privacy-policy">Gizlilik Politikası</Link>
+            <Link to="/terms-of-service">Kullanım Şartları</Link>
+            <Link to="/safety">Güvenlik</Link>
           </div>
           <p>© 2026 Sigal Media. Tüm hakları saklıdır.</p>
         </footer>
