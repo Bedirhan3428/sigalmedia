@@ -13,6 +13,7 @@ import Messages   from './pages/Messages';
 import ChatPage   from './pages/ChatPage';
 import PostDetail from './pages/PostDetail';
 import AdminDashboard from './pages/AdminDashboard';
+import Home           from './pages/Home';
 import SafetyPage     from './pages/SafetyPage';
 import PrivacyPolicy  from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
@@ -44,7 +45,8 @@ export default function App() {
           <Route path="/register" element={<Register />} />
 
           {/* Main app — protected */}
-          <Route path="/"        element={<Protected><Feed /></Protected>} />
+          <Route path="/"        element={<Home />} />
+          <Route path="/feed"    element={<Protected><Feed /></Protected>} />
           <Route path="/explore" element={<Protected><Explore /></Protected>} />
           <Route path="/share"   element={<Protected><Share /></Protected>} />
           <Route path="/reels"   element={<Protected><Reels /></Protected>} />
