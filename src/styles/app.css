@@ -1444,12 +1444,18 @@ html, body, #root {
   margin-bottom: 16px;
 }
 
-.footer-links button {
+.footer-links a, .footer-links button {
   background: none;
   border: none;
   color: var(--text-3);
   font-size: 13px;
   cursor: pointer;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.footer-links a:hover, .footer-links button:hover {
+  color: var(--text);
 }
 
 .landing-footer p {
