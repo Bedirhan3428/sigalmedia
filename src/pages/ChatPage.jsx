@@ -4,7 +4,7 @@ import { ArrowLeft, Send, ImagePlus, X, Loader2, Info } from 'lucide-react';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { ref as dbRef, set, onValue } from 'firebase/database';
 import { useAuth } from '../context/AuthContext';
-import { storage, database } from '../firebase';
+import { storage, rtdb as database } from '../firebase';
 import {
   getOrCreateConversation,
   sendMessage,
