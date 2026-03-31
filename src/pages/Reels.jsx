@@ -157,7 +157,6 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
   const navigate = useNavigate();
   const videoRef = useRef(null);
 
-  // Tap tracking — refs only, no state, to avoid re-renders
   const tapTimer = useRef(null);
   const lastTap = useRef(0);
 
@@ -167,44 +166,45 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
   const [muted, setMuted] = useState(false);
   const [paused, setPaused] = useState(false);
   const [showComments, setShowComments] = useState(false);
-  const [hearts, setHearts] = useState([]); // [{id, x, y}]
+  const [hearts, setHearts] = useState([]);
 
   const isVideo = post.mediaType === 'video' || post.imageUrl?.includes('/o/videos');
 
-  // Auto-play / pause when active changes
+  // ─── Düzeltilmiş video effect ─────────────────────────────────────────────
   useEffect(() => {
     const vid = videoRef.current;
     if (!vid) return;
+    let cancelled = false; // play() promise'i cleanup'tan sonra etki etmesin
 
     const handleVisibility = () => {
       if (document.hidden) {
         vid.pause();
       } else if (isActive && !paused) {
-        vid.play().catch(() => { });
+        vid.play().catch(() => {});
       }
     };
-
     document.addEventListener('visibilitychange', handleVisibility);
 
-    if (isActive) {
-      if (!paused) {
-        vid.play().then(() => setPaused(false)).catch(() => { });
-      } else {
-        vid.pause();
-      }
-    } else {
+    if (isActive && !paused) {
+      vid.play()
+        .then(() => { if (!cancelled) setPaused(false); })
+        .catch(() => {});
+    } else if (!isActive) {
       vid.pause();
       vid.currentTime = 0;
-      setPaused(false);
+      if (!cancelled) setPaused(false);
+    } else {
+      // isActive && paused
+      vid.pause();
     }
 
     return () => {
+      cancelled = true; // async play() artık hiçbir şey yapmaz
       document.removeEventListener('visibilitychange', handleVisibility);
-      vid.pause();
+      vid.pause();      // her koşulda durdur
     };
   }, [isActive, paused]);
 
-  // Toggle play (only called on confirmed single tap)
   const togglePlay = () => {
     const vid = videoRef.current;
     if (!vid) return;
@@ -213,51 +213,40 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
   };
 
   const triggerLike = (clientX, clientY, rect) => {
-    // Compute position relative to container
     const x = clientX - rect.left;
     const y = clientY - rect.top;
 
-    // Optimistic like
     if (!liked && deviceId) {
       setLiked(true);
       setLikes(l => l + 1);
       fetch(`${API_URL}/api/like/${post._id}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId }),
-      }).catch(() => { });
+      }).catch(() => {});
     }
 
-    // Spawn heart
     const id = Date.now() + Math.random();
     setHearts(prev => [...prev, { id, x, y }]);
   };
 
   const removeHeart = (id) => setHearts(prev => prev.filter(h => h.id !== id));
 
-  // Unified tap handler — separates single vs double tap without affecting video
   const handleTap = (e) => {
-    // Prevent any default browser highlight
     e.preventDefault();
-
     const now = Date.now();
     const isDouble = now - lastTap.current < 300;
     lastTap.current = now;
 
-    // Capture position before async
     const rect = e.currentTarget.getBoundingClientRect();
     const clientX = e.changedTouches?.[0]?.clientX ?? e.clientX;
     const clientY = e.changedTouches?.[0]?.clientY ?? e.clientY;
 
     if (isDouble) {
-      // Cancel pending single-tap
       if (tapTimer.current) { clearTimeout(tapTimer.current); tapTimer.current = null; }
-      // Double tap → like only, do NOT touch video
       triggerLike(clientX, clientY, rect);
     } else {
-      // Wait to see if a second tap comes
       tapTimer.current = setTimeout(() => {
         tapTimer.current = null;
-        // Confirmed single tap → toggle play (video only)
         if (isVideo) togglePlay();
       }, 280);
     }
@@ -273,22 +262,17 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
       <div
         style={{
           position: 'absolute', inset: 0, cursor: 'pointer',
-          // Kill ALL tap highlights
           WebkitTapHighlightColor: 'transparent',
           WebkitUserSelect: 'none',
           userSelect: 'none',
           outline: 'none',
         }}
         onContextMenu={e => e.preventDefault()}
-        // Use touch events on mobile for better control
         onTouchEnd={handleTap}
-        // Fall back to click on desktop
         onClick={(e) => {
-          // Only fire click handler on desktop (no touch)
           if (e.detail > 0 && !('ontouchstart' in window)) handleTap(e);
         }}
       >
-        {/* Transparent protection layer (right-click / long-press shield) */}
         <div style={{ position: 'absolute', inset: 0, zIndex: 4, background: 'transparent', WebkitTouchCallout: 'none' }} />
 
         {isRendered ? (
@@ -312,11 +296,9 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
           <div style={{ width: '100%', height: '100%', background: '#000' }} />
         )}
 
-        {/* Gradient overlays */}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 45%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 120, background: 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 100%)', pointerEvents: 'none' }} />
 
-        {/* Pause indicator */}
         {paused && isVideo && (
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 5 }}>
             <div style={{ background: 'rgba(0,0,0,0.45)', borderRadius: '50%', width: 72, height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -451,7 +433,7 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
         />
       )}
 
-      {/* ── Keyframes (inline) ────────────────────────────────────────────── */}
+      {/* ── Keyframes ─────────────────────────────────────────────────────── */}
       <style>{`
         @keyframes heartBurst {
           0%   { transform: translate(-50%, -50%) scale(0.3); opacity: 1; }
@@ -518,7 +500,7 @@ export default function Reels() {
             });
           }
         })
-        .catch(() => { })
+        .catch(() => {})
         .finally(() => setFetchingMore(false));
     }
   }, [activeIndex, posts.length, fetchingMore]);
