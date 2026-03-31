@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Heart, MessageCircle, Send, PaperclipIcon } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Heart, MessageCircle, Send, PaperclipIcon, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import PostCard from '../components/PostCard';
@@ -41,7 +41,7 @@ function PostSkeleton() {
 // ── Unverified banner ─────────────────────────────────────────────────────────
 function UnverifiedBanner({ onResend }) {
   const [sending, setSending] = useState(false);
-  const [sent,    setSent]    = useState(false);
+  const [sent, setSent] = useState(false);
 
   const handle = async () => {
     setSending(true);
@@ -66,19 +66,25 @@ function UnverifiedBanner({ onResend }) {
 
 // ── Main Feed ─────────────────────────────────────────────────────────────────
 export default function Feed() {
-  const user     = useAuth();
+  const user = useAuth();
   const navigate = useNavigate();
   const { profile } = useProfile();
 
-  const [tab,          setTab]          = useState('vitrin');
-  const [posts,        setPosts]        = useState([]);
-  const [likedIds,     setLikedIds]     = useState([]);
-  const [likedCmtIds,  setLikedCmtIds]  = useState([]);
-  const [savedIds,     setSavedIds]     = useState([]);
+  const [tab, setTab] = useState('vitrin');
+  const [posts, setPosts] = useState([]);
+  const [likedIds, setLikedIds] = useState([]);
+  const [likedCmtIds, setLikedCmtIds] = useState([]);
+  const [savedIds, setSavedIds] = useState([]);
   const [followingIds, setFollowingIds] = useState([]);
-  const [loading,      setLoading]      = useState(true);
-  const [refreshing,   setRefreshing]   = useState(false);
-  const [unreadCount,  setUnreadCount]  = useState(0);
+  
+  // -- Sayfalama (Infinite Scroll) State'leri --
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  
+  const observerTarget = useRef(null); // Sayfa sonu dedektörü
 
   const isVerified = user?.emailVerified;
 
@@ -96,31 +102,84 @@ export default function Feed() {
       fetch(`${API_URL}/api/following-ids/${user.uid}`).then(r => r.json()),
       fetch(`${API_URL}/api/saved-ids/${user.uid}`).then(r => r.json()),
     ]).then(([likeData, followData, saveData]) => {
-      setLikedIds(likeData.tweetIds     || []);
+      setLikedIds(likeData.tweetIds || []);
       setLikedCmtIds(likeData.commentIds || []);
       setFollowingIds(followData.followingIds || []);
       setSavedIds(saveData.savedIds || []);
     }).catch(() => {});
   }, [user]);
 
-  // Fetch posts
-  const fetchPosts = useCallback(async (refresh = false) => {
-    if (!user?.uid) return;
-    refresh ? setRefreshing(true) : setLoading(true);
+  // Tab değiştiğinde her şeyi sıfırla
+  useEffect(() => {
+    setPosts([]);
+    setPage(1);
+    setHasMore(true);
+  }, [tab]);
+
+  // Gönderileri Çekme Fonksiyonu
+  const fetchPosts = useCallback(async (pageNum) => {
+    if (!user?.uid || !hasMore) return;
+    
+    pageNum === 1 ? setLoading(true) : setLoadingMore(true);
+    
     try {
       const urls = {
-        vitrin:    `${API_URL}/api/feed`,
-        new:       `${API_URL}/api/feed/new`,
+        vitrin: `${API_URL}/api/feed`,
+        new: `${API_URL}/api/feed/new`,
         following: `${API_URL}/api/feed/following/${user.uid}`,
       };
-      const res  = await fetch(urls[tab]);
+      
+      // Limit=5 ile sayfaları çekiyoruz (Backend'in desteklediğini varsayarak)
+      const res = await fetch(`${urls[tab]}?page=${pageNum}&limit=5`);
       const data = await res.json();
-      setPosts(Array.isArray(data) ? data : []);
-    } catch { setPosts([]); }
-    finally { setLoading(false); setRefreshing(false); }
-  }, [tab, user]);
+      const newPosts = Array.isArray(data) ? data : [];
 
-  useEffect(() => { fetchPosts(); }, [fetchPosts]);
+      if (pageNum === 1) {
+        setPosts(newPosts);
+      } else {
+        // Sadece listede olmayan yeni gönderileri ekle (Çakışmayı önler)
+        setPosts(prev => {
+          const existingIds = new Set(prev.map(p => p._id));
+          const uniqueNew = newPosts.filter(p => !existingIds.has(p._id));
+          return [...prev, ...uniqueNew];
+        });
+      }
+      
+      // Eğer gelen veri 5'ten azsa, demek ki daha fazla gönderi kalmadı
+      if (newPosts.length < 5) setHasMore(false);
+      
+    } catch { 
+      if (pageNum === 1) setPosts([]); 
+    } finally { 
+      setLoading(false); 
+      setLoadingMore(false); 
+    }
+  }, [tab, user, hasMore]);
+
+  // Sayfa numarası (page) değiştiğinde API'yi çağır
+  useEffect(() => {
+    if (user?.uid) {
+      fetchPosts(page);
+    }
+  }, [page, user, fetchPosts]);
+
+  // Intersection Observer: Kullanıcı sayfanın en altına geldi mi?
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+          setPage(prev => prev + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasMore, loading, loadingMore]);
 
   const handleResendVerification = async () => {
     try {
@@ -133,7 +192,7 @@ export default function Feed() {
   };
 
   return (
-    <div className="page">
+    <div className="page" style={{ height: '100vh', overflowY: 'auto' }}>
       {/* Header */}
       <header className="ig-header">
         <Logo />
@@ -157,11 +216,11 @@ export default function Feed() {
       {/* Feed tabs */}
       <div style={{
         display: 'flex', borderBottom: '1px solid var(--border)',
-        background: 'var(--bg)', position: 'sticky', top: 52, zIndex: 99,
+        background: 'var(--bg)', position: 'sticky', top: 0, zIndex: 99,
       }}>
         {[
-          { id: 'vitrin',    label: 'Keşfet 🔥' },
-          { id: 'new',       label: 'Yeni ✨' },
+          { id: 'vitrin', label: 'Keşfet 🔥' },
+          { id: 'new', label: 'Yeni ✨' },
           { id: 'following', label: 'Takip 👥' },
         ].map(t => (
           <button
@@ -224,6 +283,14 @@ export default function Feed() {
                 />
               ))
         }
+
+        {/* Sonsuz Kaydırma Yükleniyor Göstergesi ve Dedektörü */}
+        <div ref={observerTarget} style={{ padding: '20px', textAlign: 'center' }}>
+          {loadingMore && <Loader2 size={24} className="spin" color="#737373" style={{ margin: '0 auto' }} />}
+          {!hasMore && posts.length > 0 && (
+            <span style={{ color: '#737373', fontSize: 13 }}>Tüm gönderileri gördün 🎉</span>
+          )}
+        </div>
       </main>
     </div>
   );
