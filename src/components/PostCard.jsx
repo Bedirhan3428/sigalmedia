@@ -312,13 +312,12 @@ export default function PostCard({
   const [heartPos, setHeartPos] = useState({ x: '50%', y: '50%' });
 
   const handleMediaTap = (e) => {
-    e.preventDefault(); // İstem dışı text seçimini engeller
+    e.preventDefault(); 
     const now = Date.now();
     const isDouble = now - lastTap.current < 300;
     lastTap.current = now;
 
     if (isDouble) {
-      // Tıklanan konumu hesapla
       let x = '50%', y = '50%';
       if (e?.currentTarget) {
         const rect = e.currentTarget.getBoundingClientRect();
@@ -329,14 +328,12 @@ export default function PostCard({
       }
       setHeartPos({ x, y });
       
-      // Animasyonu tetikle
       setDoubleTapHeart(false);
       requestAnimationFrame(() => {
         setDoubleTapHeart(true);
         setTimeout(() => setDoubleTapHeart(false), 800);
       });
       
-      // Beğeni İsteği At
       if (!liked && !isOwn) {
         setLiked(true);
         setLikes(l => l + 1);
@@ -346,7 +343,6 @@ export default function PostCard({
         }).catch(() => {});
       }
     }
-    // Tek tıklama aksiyonları tamamen kaldırıldı! Artık Reels'e yönlendirmiyor.
   };
 
   const handleLike = async () => {
@@ -496,15 +492,21 @@ export default function PostCard({
                 onPause={() => setPlaying(false)}
                 style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }}
               />
-              {/* Ses butonu */}
+              {/* SES BUTONU (DOKUNMA YALITIMI EKLENDI) */}
               <button
                 onClick={(e) => {
+                  e.preventDefault();
                   e.stopPropagation(); 
-                  const newMuted = !muted;
-                  setMuted(newMuted);
-                  if (videoRef.current) videoRef.current.muted = newMuted;
+                  setMuted(prev => {
+                    const next = !prev;
+                    if (videoRef.current) videoRef.current.muted = next;
+                    return next;
+                  });
                 }}
-                style={{ position: 'absolute', bottom: 10, right: 10, background: 'rgba(0,0,0,0.55)', border: 'none', borderRadius: '50%', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: 'pointer', zIndex: 5 }}
+                onTouchStart={(e) => e.stopPropagation()} // Alta tıklama geçmesini engeller
+                onTouchEnd={(e) => e.stopPropagation()}   // Alta tıklama geçmesini engeller
+                onPointerDown={(e) => e.stopPropagation()} 
+                style={{ position: 'absolute', bottom: 10, right: 10, background: 'rgba(0,0,0,0.55)', border: 'none', borderRadius: '50%', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: 'pointer', zIndex: 50 }}
               >
                 {muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
               </button>
@@ -630,3 +632,4 @@ export default function PostCard({
     </>
   );
 }
+
