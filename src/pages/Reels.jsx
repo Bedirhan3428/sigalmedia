@@ -6,6 +6,9 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../apiConfig';
 
+// ─── Global: aynı anda sadece bir video çalsın ────────────────────────────────
+let globalActiveVideo = null;
+
 // ─── Yorum Paneli ─────────────────────────────────────────────────────────────
 function CommentPanel({ tweetId, deviceId, onClose }) {
   const [comments, setComments] = useState([]);
@@ -130,23 +133,16 @@ function HeartBurst({ x, y, onDone }) {
   return (
     <div
       style={{
-        position: 'absolute',
-        left: x,
-        top: y,
-        transform: 'translate(-50%, -50%)',
-        zIndex: 30,
+        position: 'absolute', left: x, top: y,
+        transform: 'translate(-50%, -50%)', zIndex: 30,
         pointerEvents: 'none',
         animation: 'heartBurst 0.7s ease-out forwards',
       }}
       onAnimationEnd={onDone}
     >
       <Heart
-        size={90}
-        fill="#FF3040"
-        color="#FF3040"
-        style={{
-          filter: 'drop-shadow(0 0 18px rgba(255,48,64,0.7)) drop-shadow(0 0 6px rgba(255,48,64,0.9))',
-        }}
+        size={90} fill="#FF3040" color="#FF3040"
+        style={{ filter: 'drop-shadow(0 0 18px rgba(255,48,64,0.7)) drop-shadow(0 0 6px rgba(255,48,64,0.9))' }}
       />
     </div>
   );
@@ -156,7 +152,6 @@ function HeartBurst({ x, y, onDone }) {
 function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
   const navigate = useNavigate();
   const videoRef = useRef(null);
-
   const tapTimer = useRef(null);
   const lastTap = useRef(0);
 
@@ -170,38 +165,54 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
 
   const isVideo = post.mediaType === 'video' || post.imageUrl?.includes('/o/videos');
 
-  // ─── Düzeltilmiş video effect ─────────────────────────────────────────────
+  // ─── Video kontrolü ───────────────────────────────────────────────────────
   useEffect(() => {
     const vid = videoRef.current;
     if (!vid) return;
-    let cancelled = false; // play() promise'i cleanup'tan sonra etki etmesin
+    let cancelled = false;
 
     const handleVisibility = () => {
       if (document.hidden) {
         vid.pause();
       } else if (isActive && !paused) {
+        if (globalActiveVideo && globalActiveVideo !== vid) {
+          globalActiveVideo.pause();
+          globalActiveVideo.currentTime = 0;
+        }
+        globalActiveVideo = vid;
         vid.play().catch(() => {});
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
     if (isActive && !paused) {
+      // Önce global'daki eski videoyu HEMEN durdur
+      if (globalActiveVideo && globalActiveVideo !== vid) {
+        globalActiveVideo.pause();
+        globalActiveVideo.currentTime = 0;
+      }
+      globalActiveVideo = vid;
+
       vid.play()
         .then(() => { if (!cancelled) setPaused(false); })
         .catch(() => {});
-    } else if (!isActive) {
+
+    } else if (isActive && paused) {
+      vid.pause();
+
+    } else {
+      // Pasif kart: anında durdur ve sıfırla
       vid.pause();
       vid.currentTime = 0;
+      if (globalActiveVideo === vid) globalActiveVideo = null;
       if (!cancelled) setPaused(false);
-    } else {
-      // isActive && paused
-      vid.pause();
     }
 
     return () => {
-      cancelled = true; // async play() artık hiçbir şey yapmaz
+      cancelled = true;
       document.removeEventListener('visibilitychange', handleVisibility);
-      vid.pause();      // her koşulda durdur
+      vid.pause();
+      if (globalActiveVideo === vid) globalActiveVideo = null;
     };
   }, [isActive, paused]);
 
@@ -215,7 +226,6 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
   const triggerLike = (clientX, clientY, rect) => {
     const x = clientX - rect.left;
     const y = clientY - rect.top;
-
     if (!liked && deviceId) {
       setLiked(true);
       setLikes(l => l + 1);
@@ -224,7 +234,6 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
         body: JSON.stringify({ deviceId }),
       }).catch(() => {});
     }
-
     const id = Date.now() + Math.random();
     setHearts(prev => [...prev, { id, x, y }]);
   };
@@ -236,11 +245,9 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
     const now = Date.now();
     const isDouble = now - lastTap.current < 300;
     lastTap.current = now;
-
     const rect = e.currentTarget.getBoundingClientRect();
     const clientX = e.changedTouches?.[0]?.clientX ?? e.clientX;
     const clientY = e.changedTouches?.[0]?.clientY ?? e.clientY;
-
     if (isDouble) {
       if (tapTimer.current) { clearTimeout(tapTimer.current); tapTimer.current = null; }
       triggerLike(clientX, clientY, rect);
@@ -262,16 +269,12 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
       <div
         style={{
           position: 'absolute', inset: 0, cursor: 'pointer',
-          WebkitTapHighlightColor: 'transparent',
-          WebkitUserSelect: 'none',
-          userSelect: 'none',
-          outline: 'none',
+          WebkitTapHighlightColor: 'transparent', WebkitUserSelect: 'none',
+          userSelect: 'none', outline: 'none',
         }}
         onContextMenu={e => e.preventDefault()}
         onTouchEnd={handleTap}
-        onClick={(e) => {
-          if (e.detail > 0 && !('ontouchstart' in window)) handleTap(e);
-        }}
+        onClick={(e) => { if (e.detail > 0 && !('ontouchstart' in window)) handleTap(e); }}
       >
         <div style={{ position: 'absolute', inset: 0, zIndex: 4, background: 'transparent', WebkitTouchCallout: 'none' }} />
 
@@ -280,8 +283,9 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
             <video
               ref={videoRef}
               src={post.imageUrl}
-              loop muted={muted} playsInline
-              autoPlay={isActive}
+              loop
+              muted={muted}
+              playsInline
               preload={isActive ? 'auto' : 'metadata'}
               style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#000' }}
             />
@@ -308,7 +312,7 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
         )}
       </div>
 
-      {/* ── Kalp animasyonları ─────────────────────────────────────────────── */}
+      {/* ── Kalpler ───────────────────────────────────────────────────────── */}
       {hearts.map(h => (
         <HeartBurst key={h.id} x={h.x} y={h.y} onDone={() => removeHeart(h.id)} />
       ))}
@@ -318,7 +322,6 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
         position: 'absolute', right: 12, bottom: navbarH + 24,
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22, zIndex: 10,
       }}>
-        {/* Avatar */}
         <div
           onClick={() => navigate(`/user/${post.authorId}`)}
           style={{ width: 46, height: 46, borderRadius: '50%', border: '2px solid #fff', overflow: 'hidden', background: '#1C1C1C', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
@@ -329,18 +332,17 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
           }
         </div>
 
-        {/* Like */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
           <button
             onClick={async (e) => {
               e.stopPropagation();
               if (!deviceId) return;
-              const now = !liked;
-              setLiked(now);
-              setLikes(l => now ? l + 1 : Math.max(0, l - 1));
+              const next = !liked;
+              setLiked(next);
+              setLikes(l => next ? l + 1 : Math.max(0, l - 1));
               try {
                 await fetch(`${API_URL}/api/like/${post._id}`, {
-                  method: now ? 'POST' : 'DELETE',
+                  method: next ? 'POST' : 'DELETE',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ deviceId }),
                 });
@@ -348,16 +350,8 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
             }}
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, WebkitTapHighlightColor: 'transparent' }}
           >
-            <Heart
-              size={30}
-              fill={liked ? '#FF3040' : 'none'}
-              color={liked ? '#FF3040' : '#fff'}
-              strokeWidth={liked ? 0 : 2}
-              style={{
-                filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))',
-                transition: 'transform 0.15s',
-                transform: liked ? 'scale(1.15)' : 'scale(1)',
-              }}
+            <Heart size={30} fill={liked ? '#FF3040' : 'none'} color={liked ? '#FF3040' : '#fff'} strokeWidth={liked ? 0 : 2}
+              style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))', transition: 'transform 0.15s', transform: liked ? 'scale(1.15)' : 'scale(1)' }}
             />
           </button>
           <span style={{ fontSize: 13, color: '#fff', fontWeight: 600, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }}>
@@ -365,12 +359,9 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
           </span>
         </div>
 
-        {/* Comment */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-          <button
-            onClick={(e) => { e.stopPropagation(); setShowComments(true); }}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, WebkitTapHighlightColor: 'transparent' }}
-          >
+          <button onClick={(e) => { e.stopPropagation(); setShowComments(true); }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, WebkitTapHighlightColor: 'transparent' }}>
             <MessageCircle size={30} color="#fff" strokeWidth={1.8} style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />
           </button>
           <span style={{ fontSize: 13, color: '#fff', fontWeight: 600, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }}>
@@ -378,7 +369,6 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
           </span>
         </div>
 
-        {/* Share */}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -390,7 +380,6 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
           <Send size={28} color="#fff" strokeWidth={1.8} style={{ transform: 'rotate(10deg)', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />
         </button>
 
-        {/* Mute */}
         {isVideo && (
           <button
             onClick={(e) => {
@@ -424,16 +413,10 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
         )}
       </div>
 
-      {/* ── Yorum Paneli ──────────────────────────────────────────────────── */}
       {showComments && (
-        <CommentPanel
-          tweetId={post._id}
-          deviceId={deviceId}
-          onClose={() => setShowComments(false)}
-        />
+        <CommentPanel tweetId={post._id} deviceId={deviceId} onClose={() => setShowComments(false)} />
       )}
 
-      {/* ── Keyframes ─────────────────────────────────────────────────────── */}
       <style>{`
         @keyframes heartBurst {
           0%   { transform: translate(-50%, -50%) scale(0.3); opacity: 1; }
