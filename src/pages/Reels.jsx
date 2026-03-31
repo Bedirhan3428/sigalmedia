@@ -9,9 +9,9 @@ import { API_URL } from '../apiConfig';
 // ─── Yorum Paneli ─────────────────────────────────────────────────────────────
 function CommentPanel({ tweetId, deviceId, onClose }) {
   const [comments, setComments] = useState([]);
-  const [text,     setText]     = useState('');
-  const [loading,  setLoading]  = useState(true);
-  const [sending,  setSending]  = useState(false);
+  const [text, setText] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
   const listRef = useRef(null);
 
   useEffect(() => {
@@ -19,7 +19,7 @@ function CommentPanel({ tweetId, deviceId, onClose }) {
     fetch(`${API_URL}/api/comments/${tweetId}`)
       .then(r => r.json())
       .then(d => setComments(Array.isArray(d) ? d : []))
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   }, [tweetId]);
 
@@ -27,7 +27,7 @@ function CommentPanel({ tweetId, deviceId, onClose }) {
     if (!text.trim() || sending || !deviceId) return;
     setSending(true);
     try {
-      const res  = await fetch(`${API_URL}/api/comment/${tweetId}`, {
+      const res = await fetch(`${API_URL}/api/comment/${tweetId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId, content: text.trim() }),
@@ -36,57 +36,38 @@ function CommentPanel({ tweetId, deviceId, onClose }) {
       if (res.ok && data.comment) {
         setComments(prev => [...prev, data.comment]);
         setText('');
-        // Aşağı kaydır
         setTimeout(() => listRef.current?.scrollTo({ top: 9999, behavior: 'smooth' }), 100);
       }
-    } catch {}
+    } catch { }
     finally { setSending(false); }
   };
 
   function timeAgo(date) {
     if (!date) return '';
     const diff = (Date.now() - new Date(date)) / 1000;
-    if (diff < 60)    return 'şimdi';
-    if (diff < 3600)  return `${Math.floor(diff / 60)}dk`;
+    if (diff < 60) return 'şimdi';
+    if (diff < 3600) return `${Math.floor(diff / 60)}dk`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}s`;
     return `${Math.floor(diff / 86400)}g`;
   }
 
   return (
     <>
-      {/* Backdrop — sadece panel dışı */}
-      <div
-        style={{ position: 'absolute', inset: 0, zIndex: 50 }}
-        onClick={onClose}
-      />
-
-      {/* Panel */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 50 }} onClick={onClose} />
       <div style={{
-        position: 'absolute',
-        bottom: 0, left: 0, right: 0,
-        height: '55%',          // Ekranın yarısından az
-        background: '#1C1C1C',
-        borderRadius: '16px 16px 0 0',
-        border: '1px solid #262626',
-        borderBottom: 'none',
-        display: 'flex',
-        flexDirection: 'column',
-        zIndex: 51,
-        overflow: 'hidden',
-        paddingBottom: 'env(safe-area-inset-bottom)',
+        position: 'absolute', bottom: 0, left: 0, right: 0, height: '55%',
+        background: '#1C1C1C', borderRadius: '16px 16px 0 0',
+        border: '1px solid #262626', borderBottom: 'none',
+        display: 'flex', flexDirection: 'column', zIndex: 51,
+        overflow: 'hidden', paddingBottom: 'env(safe-area-inset-bottom)',
       }}>
-        {/* Handle */}
         <div style={{ width: 36, height: 4, borderRadius: 2, background: '#363636', margin: '12px auto 4px', flexShrink: 0 }} />
-
-        {/* Başlık */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px 12px', borderBottom: '1px solid #262626', flexShrink: 0 }}>
           <span style={{ fontWeight: 700, fontSize: 16, color: '#F5F5F5' }}>Yorumlar</span>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#A8A8A8', cursor: 'pointer', padding: 4 }}>
             <X size={20} />
           </button>
         </div>
-
-        {/* Yorum listesi */}
         <div ref={listRef} style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {loading ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 0' }}>
@@ -98,14 +79,12 @@ function CommentPanel({ tweetId, deviceId, onClose }) {
             </div>
           ) : comments.map(c => (
             <div key={c._id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              {/* Avatar */}
               <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#363636', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#F5F5F5' }}>
                 {c.authorAvatarUrl
                   ? <img src={c.authorAvatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : (c.authorAvatar?.charAt(0)?.toUpperCase() || '?')
                 }
               </div>
-              {/* İçerik */}
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
                   <span style={{ fontWeight: 700, fontSize: 13, color: '#F5F5F5' }}>{c.authorAvatar}</span>
@@ -116,8 +95,6 @@ function CommentPanel({ tweetId, deviceId, onClose }) {
             </div>
           ))}
         </div>
-
-        {/* Input */}
         <div style={{ borderTop: '1px solid #262626', padding: '10px 12px', display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0, background: '#1C1C1C' }}>
           <input
             value={text}
@@ -148,88 +125,142 @@ function CommentPanel({ tweetId, deviceId, onClose }) {
   );
 }
 
+// ─── Kalp Animasyon Bileşeni ──────────────────────────────────────────────────
+function HeartBurst({ x, y, onDone }) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: x,
+        top: y,
+        transform: 'translate(-50%, -50%)',
+        zIndex: 30,
+        pointerEvents: 'none',
+        animation: 'heartBurst 0.7s ease-out forwards',
+      }}
+      onAnimationEnd={onDone}
+    >
+      <Heart
+        size={90}
+        fill="#FF3040"
+        color="#FF3040"
+        style={{
+          filter: 'drop-shadow(0 0 18px rgba(255,48,64,0.7)) drop-shadow(0 0 6px rgba(255,48,64,0.9))',
+        }}
+      />
+    </div>
+  );
+}
+
 // ─── Tek Reel Kartı ───────────────────────────────────────────────────────────
 function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
-  const navigate  = useNavigate();
-  const videoRef  = useRef(null);
-  const lastTap   = useRef(0);
+  const navigate = useNavigate();
+  const videoRef = useRef(null);
+
+  // Tap tracking — refs only, no state, to avoid re-renders
+  const tapTimer = useRef(null);
+  const lastTap = useRef(0);
 
   const initLiked = likedTweetIds.includes(post._id?.toString());
-  const [liked,        setLiked]        = useState(initLiked);
-  const [likes,        setLikes]        = useState(post.likes || 0);
-  const [muted,        setMuted]        = useState(false);
-  const [playing,      setPlaying]      = useState(false);
-  const [paused,       setPaused]       = useState(false);
+  const [liked, setLiked] = useState(initLiked);
+  const [likes, setLikes] = useState(post.likes || 0);
+  const [muted, setMuted] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [showComments, setShowComments] = useState(false);
-  const [heartAnim,    setHeartAnim]    = useState(false);
-  const [heartPos,     setHeartPos]     = useState({ x: '50%', y: '50%' });
+  const [hearts, setHearts] = useState([]); // [{id, x, y}]
 
   const isVideo = post.mediaType === 'video' || post.imageUrl?.includes('/o/videos');
 
-  // Auto-play/pause
+  // Auto-play / pause when active changes
   useEffect(() => {
     const vid = videoRef.current;
     if (!vid) return;
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        vid.pause();
+      } else if (isActive && !paused) {
+        vid.play().catch(() => { });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+
     if (isActive) {
-      vid.play().then(() => { setPlaying(true); setPaused(false); }).catch(() => {});
+      if (!paused) {
+        vid.play().then(() => setPaused(false)).catch(() => { });
+      } else {
+        vid.pause();
+      }
     } else {
       vid.pause();
       vid.currentTime = 0;
-      setPlaying(false); setPaused(false);
+      setPaused(false);
     }
-  }, [isActive]);
 
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      vid.pause();
+    };
+  }, [isActive, paused]);
+
+  // Toggle play (only called on confirmed single tap)
   const togglePlay = () => {
     const vid = videoRef.current;
     if (!vid) return;
-    if (vid.paused) { vid.play(); setPlaying(true);  setPaused(false); }
-    else            { vid.pause(); setPlaying(false); setPaused(true); }
+    if (vid.paused) { vid.play(); setPaused(false); }
+    else { vid.pause(); setPaused(true); }
   };
 
-  const handleLike = async (e) => {
-    e.stopPropagation();
-    if (!deviceId) return;
-    const now = !liked;
-    setLiked(now);
-    setLikes(l => now ? l + 1 : Math.max(0, l - 1));
-    try {
-      await fetch(`${API_URL}/api/like/${post._id}`, {
-        method: now ? 'POST' : 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+  const triggerLike = (clientX, clientY, rect) => {
+    // Compute position relative to container
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+
+    // Optimistic like
+    if (!liked && deviceId) {
+      setLiked(true);
+      setLikes(l => l + 1);
+      fetch(`${API_URL}/api/like/${post._id}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId }),
-      });
-    } catch {}
+      }).catch(() => { });
+    }
+
+    // Spawn heart
+    const id = Date.now() + Math.random();
+    setHearts(prev => [...prev, { id, x, y }]);
   };
 
-  // Tap → oynat/durdur + çift tıklama kalp
+  const removeHeart = (id) => setHearts(prev => prev.filter(h => h.id !== id));
+
+  // Unified tap handler — separates single vs double tap without affecting video
   const handleTap = (e) => {
+    // Prevent any default browser highlight
+    e.preventDefault();
+
     const now = Date.now();
-    if (now - lastTap.current < 300) {
-      // Çift tıklama: kalp animasyonu + beğen
-      if (e?.currentTarget) {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const x = ((e.clientX - rect.left) / rect.width  * 100).toFixed(1) + '%';
-        const y = ((e.clientY - rect.top)  / rect.height * 100).toFixed(1) + '%';
-        setHeartPos({ x, y });
-      }
-      setHeartAnim(false);
-      requestAnimationFrame(() => {
-        setHeartAnim(true);
-        setTimeout(() => setHeartAnim(false), 800);
-      });
-      if (!liked && deviceId) {
-        setLiked(true);
-        setLikes(l => l + 1);
-        fetch(`${API_URL}/api/like/${post._id}`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ deviceId }),
-        }).catch(() => {});
-      }
-    } else {
-      // Tek tıklama: oynat/durdur
-      if (isVideo) togglePlay();
-    }
+    const isDouble = now - lastTap.current < 300;
     lastTap.current = now;
+
+    // Capture position before async
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clientX = e.changedTouches?.[0]?.clientX ?? e.clientX;
+    const clientY = e.changedTouches?.[0]?.clientY ?? e.clientY;
+
+    if (isDouble) {
+      // Cancel pending single-tap
+      if (tapTimer.current) { clearTimeout(tapTimer.current); tapTimer.current = null; }
+      // Double tap → like only, do NOT touch video
+      triggerLike(clientX, clientY, rect);
+    } else {
+      // Wait to see if a second tap comes
+      tapTimer.current = setTimeout(() => {
+        tapTimer.current = null;
+        // Confirmed single tap → toggle play (video only)
+        if (isVideo) togglePlay();
+      }, 280);
+    }
   };
 
   const bgHue = (post.authorAvatar?.charCodeAt(0) || 0) * 37 % 360;
@@ -240,13 +271,26 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
 
       {/* ── Media ─────────────────────────────────────────────────────────── */}
       <div
-        style={{ position: 'absolute', inset: 0, cursor: 'pointer', WebkitUserSelect: 'none', userSelect: 'none' }}
+        style={{
+          position: 'absolute', inset: 0, cursor: 'pointer',
+          // Kill ALL tap highlights
+          WebkitTapHighlightColor: 'transparent',
+          WebkitUserSelect: 'none',
+          userSelect: 'none',
+          outline: 'none',
+        }}
         onContextMenu={e => e.preventDefault()}
-        onClick={handleTap}
+        // Use touch events on mobile for better control
+        onTouchEnd={handleTap}
+        // Fall back to click on desktop
+        onClick={(e) => {
+          // Only fire click handler on desktop (no touch)
+          if (e.detail > 0 && !('ontouchstart' in window)) handleTap(e);
+        }}
       >
-        {/* Şeffaf koruma katmanı: sağ tık ve indirmeyi engeller */}
+        {/* Transparent protection layer (right-click / long-press shield) */}
         <div style={{ position: 'absolute', inset: 0, zIndex: 4, background: 'transparent', WebkitTouchCallout: 'none' }} />
-        {/* Yalnızca shouldRenderMedia (isRendered) true ise videoyu veya resmi DOM'a ekle */}
+
         {isRendered ? (
           isVideo && post.imageUrl ? (
             <video
@@ -260,7 +304,7 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
           ) : post.imageUrl ? (
             <img src={post.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }} />
           ) : (
-            <div style={{ width: '100%', height: '100%', background: `linear-gradient(160deg, hsl(${bgHue},40%,10%), hsl(${bgHue+30},50%,16%))`, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
+            <div style={{ width: '100%', height: '100%', background: `linear-gradient(160deg, hsl(${bgHue},40%,10%), hsl(${bgHue + 30},50%,16%))`, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
               <p style={{ color: '#fff', fontSize: 22, fontWeight: 600, lineHeight: 1.55, textAlign: 'center', maxWidth: 340 }}>{post.content}</p>
             </div>
           )
@@ -274,30 +318,18 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
 
         {/* Pause indicator */}
         {paused && isVideo && (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 5 }}>
             <div style={{ background: 'rgba(0,0,0,0.45)', borderRadius: '50%', width: 72, height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Play size={32} color="#fff" fill="#fff" />
             </div>
           </div>
         )}
-
-        {/* ✦ Çift-tıklama kalp animasyonu */}
-        {heartAnim && (
-          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 20 }}>
-            <span style={{
-              position: 'absolute',
-              top: heartPos.y,
-              left: heartPos.x,
-              fontSize: 90,
-              lineHeight: 1,
-              animation: 'heartPop 0.75s ease-out forwards',
-              filter: 'drop-shadow(0 4px 16px rgba(255,48,63,0.5))',
-              pointerEvents: 'none',
-              userSelect: 'none',
-            }}>❤️</span>
-          </div>
-        )}
       </div>
+
+      {/* ── Kalp animasyonları ─────────────────────────────────────────────── */}
+      {hearts.map(h => (
+        <HeartBurst key={h.id} x={h.x} y={h.y} onDone={() => removeHeart(h.id)} />
+      ))}
 
       {/* ── Sağ sidebar ───────────────────────────────────────────────────── */}
       <div style={{
@@ -305,8 +337,10 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22, zIndex: 10,
       }}>
         {/* Avatar */}
-        <div onClick={() => navigate(`/user/${post.authorId}`)}
-             style={{ width: 46, height: 46, borderRadius: '50%', border: '2px solid #fff', overflow: 'hidden', background: '#1C1C1C', cursor: 'pointer' }}>
+        <div
+          onClick={() => navigate(`/user/${post.authorId}`)}
+          style={{ width: 46, height: 46, borderRadius: '50%', border: '2px solid #fff', overflow: 'hidden', background: '#1C1C1C', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
+        >
           {post.authorAvatarUrl
             ? <img src={post.authorAvatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18, color: '#fff' }}>{(post.authorAvatar || '?').charAt(0).toUpperCase()}</div>
@@ -315,21 +349,47 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
 
         {/* Like */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-          <button onClick={handleLike} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-            <Heart size={30} fill={liked ? '#FF3040' : 'none'} color={liked ? '#FF3040' : '#fff'} strokeWidth={liked ? 0 : 2}
-                  style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))', transition: 'transform 0.15s', transform: liked ? 'scale(1.15)' : 'scale(1)' }} />
+          <button
+            onClick={async (e) => {
+              e.stopPropagation();
+              if (!deviceId) return;
+              const now = !liked;
+              setLiked(now);
+              setLikes(l => now ? l + 1 : Math.max(0, l - 1));
+              try {
+                await fetch(`${API_URL}/api/like/${post._id}`, {
+                  method: now ? 'POST' : 'DELETE',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ deviceId }),
+                });
+              } catch { }
+            }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, WebkitTapHighlightColor: 'transparent' }}
+          >
+            <Heart
+              size={30}
+              fill={liked ? '#FF3040' : 'none'}
+              color={liked ? '#FF3040' : '#fff'}
+              strokeWidth={liked ? 0 : 2}
+              style={{
+                filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))',
+                transition: 'transform 0.15s',
+                transform: liked ? 'scale(1.15)' : 'scale(1)',
+              }}
+            />
           </button>
           <span style={{ fontSize: 13, color: '#fff', fontWeight: 600, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }}>
-            {likes > 999 ? `${(likes/1000).toFixed(1)}B` : likes}
+            {likes > 999 ? `${(likes / 1000).toFixed(1)}B` : likes}
           </span>
         </div>
 
         {/* Comment */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-          <button onClick={(e) => { e.stopPropagation(); setShowComments(true); }}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-            <MessageCircle size={30} color="#fff" strokeWidth={1.8}
-                           style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowComments(true); }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, WebkitTapHighlightColor: 'transparent' }}
+          >
+            <MessageCircle size={30} color="#fff" strokeWidth={1.8} style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />
           </button>
           <span style={{ fontSize: 13, color: '#fff', fontWeight: 600, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }}>
             {post.commentCount || 0}
@@ -337,36 +397,42 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
         </div>
 
         {/* Share */}
-        <button onClick={(e) => {
-          e.stopPropagation();
-          const url = `https://sigalmedia.site/post-detail?id=${post._id}`;
-          navigator.share?.({ url }).catch(() => navigator.clipboard?.writeText(url));
-        }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-          <Send size={28} color="#fff" strokeWidth={1.8}
-                style={{ transform: 'rotate(10deg)', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            const url = `https://sigalmedia.site/post-detail?id=${post._id}`;
+            navigator.share?.({ url }).catch(() => navigator.clipboard?.writeText(url));
+          }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, WebkitTapHighlightColor: 'transparent' }}
+        >
+          <Send size={28} color="#fff" strokeWidth={1.8} style={{ transform: 'rotate(10deg)', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />
         </button>
 
         {/* Mute */}
         {isVideo && (
-          <button onClick={(e) => {
-            e.stopPropagation();
-            const nm = !muted;
-            setMuted(nm);
-            if (videoRef.current) videoRef.current.muted = nm;
-          }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-            {muted ? <VolumeX size={26} color="#fff" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />
-                   : <Volume2 size={26} color="#fff" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const nm = !muted;
+              setMuted(nm);
+              if (videoRef.current) videoRef.current.muted = nm;
+            }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, WebkitTapHighlightColor: 'transparent' }}
+          >
+            {muted
+              ? <VolumeX size={26} color="#fff" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />
+              : <Volume2 size={26} color="#fff" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />
+            }
           </button>
         )}
       </div>
 
       {/* ── Alt bilgi ─────────────────────────────────────────────────────── */}
-      <div style={{
-        position: 'absolute', left: 14, bottom: navbarH + 24, right: 72, zIndex: 10,
-        display: 'flex', flexDirection: 'column', gap: 8,
-      }}>
-        <span onClick={() => navigate(`/user/${post.authorId}`)}
-              style={{ fontWeight: 700, fontSize: 15, color: '#fff', cursor: 'pointer', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }}>
+      <div style={{ position: 'absolute', left: 14, bottom: navbarH + 24, right: 72, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <span
+          onClick={() => navigate(`/user/${post.authorId}`)}
+          style={{ fontWeight: 700, fontSize: 15, color: '#fff', cursor: 'pointer', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))', WebkitTapHighlightColor: 'transparent' }}
+        >
           @{post.authorAvatar}
         </span>
         {post.content && (
@@ -384,24 +450,36 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
           onClose={() => setShowComments(false)}
         />
       )}
+
+      {/* ── Keyframes (inline) ────────────────────────────────────────────── */}
+      <style>{`
+        @keyframes heartBurst {
+          0%   { transform: translate(-50%, -50%) scale(0.3); opacity: 1; }
+          40%  { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+          70%  { transform: translate(-50%, -50%) scale(0.95); opacity: 1; }
+          100% { transform: translate(-50%, -50%) scale(1.1); opacity: 0; }
+        }
+      `}</style>
     </div>
   );
 }
 
 // ─── Ana Reels Sayfası ────────────────────────────────────────────────────────
 export default function Reels() {
-  const user          = useAuth();
-  const [posts,       setPosts]       = useState([]);
-  const [likedIds,    setLikedIds]    = useState([]);
+  const user = useAuth();
+  const [posts, setPosts] = useState([]);
+  const [likedIds, setLikedIds] = useState([]);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [loading,     setLoading]     = useState(true);
-  const [fetchingMore,setFetchingMore]= useState(false);
-  const scrollRef                     = useRef(null);
+  const [loading, setLoading] = useState(true);
+  const [fetchingMore, setFetchingMore] = useState(false);
+  const scrollRef = useRef(null);
 
   useEffect(() => {
     Promise.all([
       fetch(`${API_URL}/api/feed`).then(r => r.json()),
-      user?.uid ? fetch(`${API_URL}/api/liked-ids/${user.uid}`).then(r => r.json()) : Promise.resolve({ tweetIds: [] }),
+      user?.uid
+        ? fetch(`${API_URL}/api/liked-ids/${user.uid}`).then(r => r.json())
+        : Promise.resolve({ tweetIds: [] }),
     ]).then(([feedData, likeData]) => {
       setPosts(Array.isArray(feedData) ? feedData : []);
       setLikedIds(likeData.tweetIds || []);
@@ -409,18 +487,15 @@ export default function Reels() {
     }).catch(() => setLoading(false));
   }, [user?.uid]);
 
-  // Aktif index takip et
   useEffect(() => {
     const container = scrollRef.current;
     if (!container || !posts.length) return;
-
     const items = container.querySelectorAll('[data-reel-index]');
-    const obs   = new IntersectionObserver(
+    const obs = new IntersectionObserver(
       (entries) => {
         entries.forEach(entry => {
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.5)
             setActiveIndex(parseInt(entry.target.dataset.reelIndex));
-          }
         });
       },
       { threshold: 0.5, root: container }
@@ -437,16 +512,13 @@ export default function Reels() {
         .then(newPosts => {
           if (Array.isArray(newPosts)) {
             setPosts(prev => {
-              // Yalnızca daha önce listede OLMAYAN (izlenmemiş) gönderileri al
               const existingIds = new Set(prev.map(p => p._id?.toString()));
               const uniqueNew = newPosts.filter(p => !existingIds.has(p._id?.toString()));
-              
-              if (uniqueNew.length === 0) return prev; // Yeni içerik kalmadıysa ekleme yapma
-              return [...prev, ...uniqueNew];
+              return uniqueNew.length === 0 ? prev : [...prev, ...uniqueNew];
             });
           }
         })
-        .catch(() => {})
+        .catch(() => { })
         .finally(() => setFetchingMore(false));
     }
   }, [activeIndex, posts.length, fetchingMore]);

@@ -288,15 +288,27 @@ export default function PostCard({
   const isSuspended = post.aegisStatus === 'suspended';
   const isRemoved   = post.aegisStatus === 'removed';
 
-  // Auto-play videos when they enter the screen, pause when they exit
+  // Auto-play videos when they enter the screen, pause when they exit or app goes background
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !isVideo || isMulti) return; // Multi handles its own video auto-play logic inside Carousel if needed, but let's keep it simple for now
+    if (!video || !isVideo || isMulti) return;
+
+    const handleVisibility = () => {
+      if (document.hidden && video) {
+        video.pause();
+        setPlaying(false);
+      }
+      // playback will be resumed by IntersectionObserver if on screen
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
 
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
-          video.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+          if (!document.hidden) {
+            video.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+          }
         } else {
           video.pause();
           setPlaying(false);
@@ -305,8 +317,12 @@ export default function PostCard({
     }, { threshold: 0.6 });
 
     observer.observe(video);
-    return () => observer.disconnect();
-  }, [isVideo]);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener('visibilitychange', handleVisibility);
+      if (video) video.pause();
+    };
+  }, [isVideo, isMulti]);
 
   if ((isSuspended || isRemoved) && !isOwn) return null;
 
