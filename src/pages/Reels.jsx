@@ -6,8 +6,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../apiConfig';
 
-// ─── Global: aynı anda sadece bir video çalsın ────────────────────────────────
-let globalActiveVideo = null;
+// ─── Global: tüm video elementlerini takip et ─────────────────────────────────
+const videoRegistry = new Set();
 
 // ─── Yorum Paneli ─────────────────────────────────────────────────────────────
 function CommentPanel({ tweetId, deviceId, onClose }) {
@@ -165,54 +165,59 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
 
   const isVideo = post.mediaType === 'video' || post.imageUrl?.includes('/o/videos');
 
-  // ─── Video kontrolü ───────────────────────────────────────────────────────
+  // ─── Registry'e kayıt + "play" eventinde diğerlerini sustur ───────────────
   useEffect(() => {
     const vid = videoRef.current;
     if (!vid) return;
-    let cancelled = false;
+
+    videoRegistry.add(vid);
+
+    const handlePlay = () => {
+      videoRegistry.forEach(v => {
+        if (v !== vid) {
+          v.pause();
+          v.currentTime = 0;
+        }
+      });
+    };
+
+    vid.addEventListener('play', handlePlay);
+
+    return () => {
+      videoRegistry.delete(vid);
+      vid.removeEventListener('play', handlePlay);
+      vid.pause();
+    };
+  }, []); // sadece mount/unmount
+
+  // ─── Aktif/pasif kontrolü ─────────────────────────────────────────────────
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid) return;
 
     const handleVisibility = () => {
       if (document.hidden) {
         vid.pause();
       } else if (isActive && !paused) {
-        if (globalActiveVideo && globalActiveVideo !== vid) {
-          globalActiveVideo.pause();
-          globalActiveVideo.currentTime = 0;
-        }
-        globalActiveVideo = vid;
         vid.play().catch(() => {});
       }
     };
+
     document.addEventListener('visibilitychange', handleVisibility);
 
     if (isActive && !paused) {
-      // Önce global'daki eski videoyu HEMEN durdur
-      if (globalActiveVideo && globalActiveVideo !== vid) {
-        globalActiveVideo.pause();
-        globalActiveVideo.currentTime = 0;
-      }
-      globalActiveVideo = vid;
-
-      vid.play()
-        .then(() => { if (!cancelled) setPaused(false); })
-        .catch(() => {});
-
-    } else if (isActive && paused) {
-      vid.pause();
-
+      vid.play().catch(() => {});
     } else {
-      // Pasif kart: anında durdur ve sıfırla
       vid.pause();
-      vid.currentTime = 0;
-      if (globalActiveVideo === vid) globalActiveVideo = null;
-      if (!cancelled) setPaused(false);
+      if (!isActive) {
+        vid.currentTime = 0;
+        setPaused(false);
+      }
     }
 
     return () => {
-      cancelled = true;
       document.removeEventListener('visibilitychange', handleVisibility);
       vid.pause();
-      if (globalActiveVideo === vid) globalActiveVideo = null;
     };
   }, [isActive, paused]);
 
