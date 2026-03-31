@@ -162,7 +162,6 @@ function ReelCard({ post, isActive, isAppVisible, isRendered, deviceId, likedTwe
 
   const isVideo = post.mediaType === 'video' || post.imageUrl?.includes('/o/videos');
 
-  // Promise Kapanımı (Closure) hatasını çözmek için anlık değerleri tutan Ref'ler
   const isActiveRef = useRef(isActive);
   const isAppVisibleRef = useRef(isAppVisible);
   const pausedRef = useRef(paused);
@@ -171,7 +170,6 @@ function ReelCard({ post, isActive, isAppVisible, isRendered, deviceId, likedTwe
   useEffect(() => { isAppVisibleRef.current = isAppVisible; }, [isAppVisible]);
   useEffect(() => { pausedRef.current = paused; }, [paused]);
 
-  // HAYALET VİDEO TEMİZLİĞİ: DOM'dan silinirken kaynağı kopar
   useEffect(() => {
     const vid = videoRef.current;
     return () => {
@@ -183,14 +181,11 @@ function ReelCard({ post, isActive, isAppVisible, isRendered, deviceId, likedTwe
     };
   }, []);
 
-  // ─── TEMİZLENMİŞ OYNATMA KONTROLÜ ─────────────────────────────────────────
   useEffect(() => {
     const vid = videoRef.current;
     if (!vid) return;
 
-    // Sadece eğer: Aktifse, Uygulama Ekrandaysa ve Manuel Durdurulmadıysa çalış
     if (isActive && isAppVisible && !paused) {
-      // 1. NÜKLEER GÜVENLİK: DOM'da benden başka çalan video varsa zorla durdur
       document.querySelectorAll('video').forEach(v => {
         if (v !== vid && !v.paused) {
           v.pause();
@@ -198,25 +193,21 @@ function ReelCard({ post, isActive, isAppVisible, isRendered, deviceId, likedTwe
         }
       });
 
-      // 2. Oynatmayı başlat
       const playPromise = vid.play();
       if (playPromise !== undefined) {
         playPromise.then(() => {
-          // 3. Promise çözülene kadar kullanıcı çoktan kaydırdıysa videoyu anında sustur
           if (!isActiveRef.current || !isAppVisibleRef.current || pausedRef.current) {
             vid.pause();
           }
         }).catch(() => {});
       }
     } else {
-      // Aktif değilse, arka plandaysa veya duraklatıldıysa anında durdur
       vid.pause();
       if (!isActive) {
-        vid.currentTime = 0; // Başa sar
-        if (paused) setPaused(false); // Geri gelince kapalı kalmasın
+        vid.currentTime = 0;
+        if (paused) setPaused(false);
       }
     }
-    // Artık visibilitychange event listener BURADA YOK! Sorun çıkaran yer burasıydı.
   }, [isActive, isAppVisible, paused]);
 
   const togglePlay = () => {
@@ -260,7 +251,9 @@ function ReelCard({ post, isActive, isAppVisible, isRendered, deviceId, likedTwe
   };
 
   const bgHue = (post.authorAvatar?.charCodeAt(0) || 0) * 37 % 360;
-  const navbarH = 52;
+  
+  // Navbar payını dikkate alarak hesaplama (Bu alan artık scroll itemin %100'ünü kaplar)
+  const navbarH = 52; 
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', background: '#000', overflow: 'hidden' }}>
@@ -300,6 +293,7 @@ function ReelCard({ post, isActive, isAppVisible, isRendered, deviceId, likedTwe
           <div style={{ width: '100%', height: '100%', background: '#000' }} />
         )}
 
+        {/* Gradien gölgeler (Daha doğal görünüm için) */}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 45%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 120, background: 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 100%)', pointerEvents: 'none' }} />
 
@@ -312,14 +306,13 @@ function ReelCard({ post, isActive, isAppVisible, isRendered, deviceId, likedTwe
         )}
       </div>
 
-      {/* ── Kalpler ───────────────────────────────────────────────────────── */}
       {hearts.map(h => (
         <HeartBurst key={h.id} x={h.x} y={h.y} onDone={() => removeHeart(h.id)} />
       ))}
 
-      {/* ── Sağ sidebar ───────────────────────────────────────────────────── */}
+      {/* ── Sağ sidebar (İkonlar) ─────────────────────────────────────────── */}
       <div style={{
-        position: 'absolute', right: 12, bottom: navbarH + 24,
+        position: 'absolute', right: 12, bottom: navbarH + 24, // Butonları aşağı iten yer
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22, zIndex: 10,
       }}>
         <div
@@ -398,7 +391,7 @@ function ReelCard({ post, isActive, isAppVisible, isRendered, deviceId, likedTwe
         )}
       </div>
 
-      {/* ── Alt bilgi ─────────────────────────────────────────────────────── */}
+      {/* ── Alt bilgi (Yazı ve Kullanıcı Adı) ─────────────────────────────── */}
       <div style={{ position: 'absolute', left: 14, bottom: navbarH + 24, right: 72, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
         <span
           onClick={() => navigate(`/user/${post.authorId}`)}
@@ -439,7 +432,6 @@ export default function Reels() {
   const [fetchingMore, setFetchingMore] = useState(false);
   const scrollRef = useRef(null);
 
-  // ANA UYGULAMA GÖRÜNÜRLÜK STATE'İ (Eski hatalı kodu bu global state çözüyor)
   const [isAppVisible, setIsAppVisible] = useState(!document.hidden);
 
   useEffect(() => {
@@ -502,7 +494,9 @@ export default function Reels() {
 
   return (
     <div style={{
-      position: 'relative', height: '100dvh', width: '100%',
+      position: 'relative', 
+      height: '100%', // 100dvh YERİNE %100 YAPILDI
+      width: '100%',
       maxWidth: 470, margin: '0 auto',
       background: '#000', overflow: 'hidden',
       display: 'flex', flexDirection: 'column',
@@ -532,7 +526,7 @@ export default function Reels() {
               key={post._id}
               data-reel-index={i}
               style={{
-                height: 'calc(100dvh - 52px)',
+                height: '100%', // <---- SORUNU ÇÖZEN SATIR (Eskiden calc(100dvh - 52px) yazıyordu)
                 scrollSnapAlign: 'start',
                 scrollSnapStop: 'always',
               }}
@@ -540,7 +534,7 @@ export default function Reels() {
               <ReelCard
                 post={post}
                 isActive={i === activeIndex}
-                isAppVisible={isAppVisible} // KARTLARA UYGULAMANIN AÇIK OLDUĞU BİLGİSİ BURADAN GİDİYOR
+                isAppVisible={isAppVisible}
                 isRendered={i >= activeIndex - 1 && i <= activeIndex + 2}
                 deviceId={user?.uid}
                 likedTweetIds={likedIds}
