@@ -162,43 +162,56 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
 
   const isVideo = post.mediaType === 'video' || post.imageUrl?.includes('/o/videos');
 
-  // ─── Aktif/pasif kontrolü ─────────────────────────────────────────────────
+  // ─── Geliştirilmiş Aktif/Pasif ve Promise Yönetimi ────────────────────────
   useEffect(() => {
     const vid = videoRef.current;
     if (!vid) return;
 
-    // Sekme arka plandayken veya değiştirildiğinde videoyu durdur
+    let isCurrentCycle = true; // Component'in bu render döngüsünü takip eder
+
     const handleVisibility = () => {
       if (document.hidden) {
         vid.pause();
       } else if (isActive && !paused) {
-        vid.play().catch(() => {});
+        const p = vid.play();
+        if (p !== undefined) p.catch(() => {});
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibility);
 
     if (isActive && !paused) {
-      // isActive ise videoyu oynatmayı dene ve promise'i yakala
+      // Oynatmayı başlat
       const playPromise = vid.play();
       if (playPromise !== undefined) {
-        playPromise.catch((error) => {
-          console.log("Video otomatik oynatma engellendi veya iptal edildi:", error);
+        playPromise.then(() => {
+          // Promise Çözülünce Güvenlik Kontrolü: 
+          // Eğer video başarılı şekilde oynamaya başladıysa, FAKAT kullanıcı
+          // çoktan diğer videoya geçtiyse (isCurrentCycle false veya isActive false ise)
+          // videoyu acımasızca durdur. "Arka planda ses çalma" bugını bu önler!
+          if (!isCurrentCycle || !isActive) {
+            vid.pause();
+            vid.currentTime = 0;
+          }
+        }).catch((err) => {
+          // Kullanıcı çok hızlı geçerse tarayıcı haklı olarak 'AbortError' fırlatır, bu normaldir.
         });
       }
     } else {
-      // Aktif değilse (veya duraklatıldıysa) videoyu durdur
+      // Eğer bu video aktif değilse direk durdur
       vid.pause();
-      
-      // Kaydırıldığında (aktif değilken) videoyu en başa sar ki tekrar geldiğinde baştan başlasın
-      if (!isActive) {
-        vid.currentTime = 0;
-        if (paused) setPaused(false);
-      }
+      try {
+        if (!isActive) {
+          vid.currentTime = 0;
+          if (paused) setPaused(false);
+        }
+      } catch (e) {}
     }
 
     return () => {
+      isCurrentCycle = false; // Temizlik başladığında eski döngüyü geçersiz kıl
       document.removeEventListener('visibilitychange', handleVisibility);
+      // Başka bir reelse geçerken veya DOM'dan çıkarken GARANTİ durdur
       vid.pause();
     };
   }, [isActive, paused]);
@@ -451,13 +464,15 @@ export default function Reels() {
     const obs = new IntersectionObserver(
       (entries) => {
         entries.forEach(entry => {
-          // Eşik değeri 0.6 yapıldı. Yani video ekranın %60'ından fazlasını kaplarsa aktif olur.
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+          // Eşik değeri 0.51 yapıldı. 
+          // Matematiksel olarak ekranın %51'inden fazlasını kaplayan SADECE BİR video olabilir.
+          // Böylece iki videonun aynı anda tetiklenmesi imkansız hale gelir.
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.51) {
             setActiveIndex(parseInt(entry.target.dataset.reelIndex));
           }
         });
       },
-      { threshold: 0.6, root: container }
+      { threshold: 0.51, root: container }
     );
     items.forEach(item => obs.observe(item));
     return () => obs.disconnect();
@@ -533,4 +548,5 @@ export default function Reels() {
     </div>
   );
 }
+
 
