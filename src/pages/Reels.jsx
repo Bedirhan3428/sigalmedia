@@ -162,57 +162,66 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
 
   const isVideo = post.mediaType === 'video' || post.imageUrl?.includes('/o/videos');
 
-  // ─── Geliştirilmiş Aktif/Pasif ve Promise Yönetimi ────────────────────────
+  // --- HAYALET VİDEO (UNMOUNT LEAK) KORUMASI ---
+  useEffect(() => {
+    const vid = videoRef.current;
+    return () => {
+      // Component ekrandan silinirken ("isRendered" false olduğunda)
+      if (vid) {
+        vid.pause();
+        vid.removeAttribute('src'); // Kaynağı zorla kopar
+        vid.load(); // Tarayıcının hafızasını zorla temizle
+      }
+    };
+  }, []);
+
+  // ─── Oynatma/Durdurma Kontrolü ───────────────────────────────────────────
   useEffect(() => {
     const vid = videoRef.current;
     if (!vid) return;
-
-    let isCurrentCycle = true; // Component'in bu render döngüsünü takip eder
 
     const handleVisibility = () => {
       if (document.hidden) {
         vid.pause();
       } else if (isActive && !paused) {
-        const p = vid.play();
-        if (p !== undefined) p.catch(() => {});
+        vid.play().catch(() => {});
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibility);
 
-    if (isActive && !paused) {
-      // Oynatmayı başlat
-      const playPromise = vid.play();
-      if (playPromise !== undefined) {
-        playPromise.then(() => {
-          // Promise Çözülünce Güvenlik Kontrolü: 
-          // Eğer video başarılı şekilde oynamaya başladıysa, FAKAT kullanıcı
-          // çoktan diğer videoya geçtiyse (isCurrentCycle false veya isActive false ise)
-          // videoyu acımasızca durdur. "Arka planda ses çalma" bugını bu önler!
-          if (!isCurrentCycle || !isActive) {
-            vid.pause();
-            vid.currentTime = 0;
-          }
-        }).catch((err) => {
-          // Kullanıcı çok hızlı geçerse tarayıcı haklı olarak 'AbortError' fırlatır, bu normaldir.
-        });
+    if (isActive) {
+      // --- NÜKLEER ÇÖZÜM: DOM'DAKİ DİĞER TÜM VİDEOLARI BUL VE SUSTUR ---
+      const allVideos = document.querySelectorAll('video');
+      allVideos.forEach(v => {
+        if (v !== vid && !v.paused) {
+          v.pause();
+          v.currentTime = 0;
+        }
+      });
+
+      if (!paused) {
+        const playPromise = vid.play();
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            // Video oynamaya başladıktan sonra hala aktif mi diye kontrol et
+            if (!isActive) {
+              vid.pause();
+              vid.currentTime = 0;
+            }
+          }).catch(() => {});
+        }
       }
     } else {
-      // Eğer bu video aktif değilse direk durdur
+      // Aktif değilse kesinlikle durdur
       vid.pause();
-      try {
-        if (!isActive) {
-          vid.currentTime = 0;
-          if (paused) setPaused(false);
-        }
-      } catch (e) {}
+      vid.currentTime = 0; // Başa sar
+      if (paused) setPaused(false);
     }
 
     return () => {
-      isCurrentCycle = false; // Temizlik başladığında eski döngüyü geçersiz kıl
       document.removeEventListener('visibilitychange', handleVisibility);
-      // Başka bir reelse geçerken veya DOM'dan çıkarken GARANTİ durdur
-      vid.pause();
+      if (vid) vid.pause(); // Etkileşim bittiğinde durdur
     };
   }, [isActive, paused]);
 
@@ -464,9 +473,6 @@ export default function Reels() {
     const obs = new IntersectionObserver(
       (entries) => {
         entries.forEach(entry => {
-          // Eşik değeri 0.51 yapıldı. 
-          // Matematiksel olarak ekranın %51'inden fazlasını kaplayan SADECE BİR video olabilir.
-          // Böylece iki videonun aynı anda tetiklenmesi imkansız hale gelir.
           if (entry.isIntersecting && entry.intersectionRatio >= 0.51) {
             setActiveIndex(parseInt(entry.target.dataset.reelIndex));
           }
