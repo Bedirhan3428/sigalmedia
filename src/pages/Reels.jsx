@@ -4,7 +4,6 @@ import {
   Heart, MessageCircle, Send, Volume2, VolumeX, Play, X, Loader2,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import Navbar from '../components/Navbar';
 import { API_URL } from '../apiConfig';
 
 // ─── Yorum Paneli ─────────────────────────────────────────────────────────────
@@ -500,8 +499,6 @@ export default function Reels() {
           ))}
         </div>
       )}
-
-      <Navbar />
     </div>
   );
 }

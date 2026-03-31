@@ -10,8 +10,7 @@ import { auth, storage } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile.jsx';
 import PostCard from '../components/PostCard';
-import Navbar from '../components/Navbar';
-import ImageCropper from '../components/ImageCropper';
+import { useUI } from '../context/UIContext';
 import { API_URL } from '../apiConfig';
 
 // ─── Küçük bileşenler ─────────────────────────────────────────────────────────
@@ -195,7 +194,8 @@ export default function Profile() {
   const { uid: paramUid } = useParams();
   const currentUser       = useAuth();
   const { profile: myProfile, setProfile, refetch } = useProfile();
-  const navigate          = useNavigate();
+  const { openShare } = useUI();
+  const navigate = useNavigate();
   const fileRef           = useRef();
 
   const uid   = paramUid || currentUser?.uid;
@@ -335,7 +335,6 @@ export default function Profile() {
   if (loading) return (
     <div className="page">
       <div className="center-loader" style={{ paddingTop: 100 }}><div className="spinner" /></div>
-      <Navbar />
     </div>
   );
 
@@ -460,7 +459,7 @@ export default function Profile() {
               <button onClick={() => setModal('edit')} style={{ flex: 1, padding: '7px 12px', borderRadius: 8, background: 'transparent', border: '1px solid #262626', color: '#F5F5F5', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                 Profili Düzenle
               </button>
-              <button onClick={() => navigate('/share')} style={{ flex: 1, padding: '7px 12px', borderRadius: 8, background: 'transparent', border: '1px solid #262626', color: '#F5F5F5', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              <button onClick={openShare} style={{ flex: 1, padding: '7px 12px', borderRadius: 8, background: 'transparent', border: '1px solid #262626', color: '#F5F5F5', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                 İçerik Paylaş
               </button>
             </>
@@ -548,8 +547,6 @@ export default function Profile() {
         </div>
       )}
 
-      <div className="nav-spacer" />
-      <Navbar />
     </div>
   );
 }

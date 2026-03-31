@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import PostCard from '../components/PostCard';
 import StoriesBar from '../components/Stories';
-import Navbar from '../components/Navbar';
 import { API_URL } from '../apiConfig';
 import { useProfile } from '../hooks/useProfile.jsx';
 import { subscribeToUnreadCount } from '../utils/rtdb';
@@ -226,9 +225,6 @@ export default function Feed() {
               ))
         }
       </main>
-
-      <div className="nav-spacer" />
-      <Navbar />
     </div>
   );
 }

@@ -4,12 +4,11 @@ import { getStorage } from 'firebase/storage';
 import { getDatabase } from 'firebase/database';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDNA6j76_dJn1RCwTR2m_FGPYgwvrh4m8o",
-  authDomain: "sigalmedia.firebaseapp.com",
-  projectId: "sigalmedia",
-  storageBucket: "sigalmedia.firebasestorage.app",
-  // Add your RTDB URL here:
-  databaseURL: "https://sigalmedia-default-rtdb.firebaseio.com",
+  apiKey:        import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain:    import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId:     import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  databaseURL:   import.meta.env.VITE_FIREBASE_DATABASE_URL,
 };
 
 const app = initializeApp(firebaseConfig);

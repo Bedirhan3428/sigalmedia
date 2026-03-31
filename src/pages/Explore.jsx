@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Search, X, Play, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PostCard from '../components/PostCard';
-import Navbar from '../components/Navbar';
 import { API_URL } from '../apiConfig';
 
 const CATEGORIES = ['Hepsi', 'Popüler', 'Yeni', 'Takip Edilenler'];
@@ -116,10 +115,7 @@ export default function Explore() {
           likedCommentIds={[]}
           followingIds={[]}
           savedTweetIds={[]}
-          onDelete={() => setSelectedPost(null)}
-        />
-        <div className="nav-spacer" />
-        <Navbar />
+          />
       </div>
     );
   }
@@ -283,9 +279,6 @@ export default function Explore() {
           )}
         </>
       )}
-
-      <div className="nav-spacer" />
-      <Navbar />
     </div>
   );
 }
