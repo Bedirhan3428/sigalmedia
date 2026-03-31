@@ -1469,3 +1469,93 @@ html, body, #root {
 }
 
 
+/* â”€â”€ MODAL / OVERLAY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.modal-overlay {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* ── PREMIUM UI UTILS ───────────────────────────────── */
+.glass-panel {
+  background: rgba(18, 18, 18, 0.75);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.premium-gradient-btn {
+  background: linear-gradient(45deg, #0095F6, #0077c5);
+  color: #fff;
+  border: none;
+  font-weight: 700;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(0, 149, 246, 0.3);
+}
+
+.premium-gradient-btn:active {
+  transform: scale(0.96);
+  opacity: 0.9;
+}
+
+.premium-gradient-btn:disabled {
+  background: #262626;
+  color: #737373;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.upload-tile {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 30px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text-2);
+}
+
+.upload-tile:active {
+  transform: scale(0.97);
+  background: var(--surface-3);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.upload-tile svg {
+  color: var(--accent);
+}
+
+.premium-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+  margin: 16px 0;
+}
+
+@keyframes pulse-accent {
+  0% { box-shadow: 0 0 0 0 rgba(0, 149, 246, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(0, 149, 246, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 149, 246, 0); }
+}
+
+.pulse-active {
+  animation: pulse-accent 2s infinite;
+}
+
+.safe-bottom {
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+

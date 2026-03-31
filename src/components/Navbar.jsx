@@ -5,19 +5,21 @@ import { Home, Search, PlusSquare, Clapperboard } from 'lucide-react';
 
 // Simple hook to get profile avatar from context
 import { useProfile } from '../hooks/useProfile.jsx';
+import { useUI }      from '../context/UIContext';
 
 export default function Navbar() {
   const navigate   = useNavigate();
   const location   = useLocation();
   const user       = useAuth();
   const { profile } = useProfile();
+  const { openShare } = useUI();
 
   const path = location.pathname;
 
   const tabs = [
     { id: 'home',     path: '/',          icon: <Home size={26} strokeWidth={path === '/' ? 2.5 : 1.8} />,                 label: 'Ana Sayfa' },
     { id: 'explore',  path: '/explore',   icon: <Search size={26} strokeWidth={path === '/explore' ? 2.5 : 1.8} />,        label: 'Keşfet' },
-    { id: 'share',    path: '/share',     icon: null,                                                                       label: 'Paylaş' },
+    { id: 'share',    path: null,         icon: null,                                                                       label: 'Paylaş' },
     { id: 'reels',    path: '/reels',     icon: <Clapperboard size={26} strokeWidth={path === '/reels' ? 2.5 : 1.8} />,   label: 'Reels' },
     { id: 'profile',  path: '/profile',   icon: null,                                                                       label: 'Profil' },
   ];
@@ -25,12 +27,16 @@ export default function Navbar() {
   return (
     <nav className="bottom-nav">
       {tabs.map(tab => {
-        const isActive = path === tab.path;
+        const isActive = tab.path ? path === tab.path : false;
 
         return (
           <button
             key={tab.id}
             onClick={() => {
+              if (tab.id === 'share') {
+                openShare();
+                return;
+              }
               if (isActive) window.location.reload();
               else navigate(tab.path);
             }}

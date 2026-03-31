@@ -4,7 +4,6 @@ import { ArrowLeft, AlertTriangle, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 import PostCard from '../components/PostCard';
-import Navbar from '../components/Navbar';
 import { API_URL } from '../apiConfig';
 
 export default function PostDetail() {
@@ -140,9 +139,6 @@ export default function PostDetail() {
                     />
                 )}
             </main>
-
-            <div className="nav-spacer" />
-            <Navbar />
         </div>
     );
 }

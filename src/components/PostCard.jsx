@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { API_URL } from '../apiConfig';
 import { renderWithHashtags } from '../utils/renderWithHashtags.jsx';
+import MediaCarousel from './MediaCarousel';
 
 // ─── Time helper ──────────────────────────────────────────────────────────────
 function timeAgo(date) {
@@ -283,13 +284,14 @@ export default function PostCard({
   const [deleting,      setDeleting]      = useState(false);
 
   const isVideo = post.mediaType === 'video' || post.imageUrl?.includes('/o/videos');
+  const isMulti = post.mediaType === 'multi' || (post.media && post.media.length > 1);
   const isSuspended = post.aegisStatus === 'suspended';
   const isRemoved   = post.aegisStatus === 'removed';
 
   // Auto-play videos when they enter the screen, pause when they exit
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !isVideo) return;
+    if (!video || !isVideo || isMulti) return; // Multi handles its own video auto-play logic inside Carousel if needed, but let's keep it simple for now
 
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
@@ -441,12 +443,12 @@ export default function PostCard({
         </div>
 
         {/* Media */}
-        {(post.imageUrl || post.content) && (
           <div
             className="post-media post-media--square"
             style={{ position: 'relative', WebkitUserSelect: 'none', userSelect: 'none' }}
             onContextMenu={e => e.preventDefault()}
             onClick={(e) => {
+              if (isMulti) return; // Carousel handles click
               // Video ise oynat/durdur + çift tıklama
               if (isVideo && videoRef.current) {
                 if (videoRef.current.paused) {
@@ -459,14 +461,15 @@ export default function PostCard({
               handleMediaTap(e);
             }}
           >
-            {post.imageUrl && !isVideo && (
+            {isMulti ? (
+              <MediaCarousel 
+                media={post.media} 
+                aspectRatio={1} 
+                onDoubleTap={handleMediaTap}
+              />
+            ) : post.imageUrl && !isVideo ? (
               <img src={post.imageUrl} alt="" loading="lazy" />
-            )}
-            
-            {/* Şeffaf koruma katmanı: sağ tık ve uzun basmayı engeller */}
-            <div style={{ position: 'absolute', inset: 0, zIndex: 4, background: 'transparent', WebkitTouchCallout: 'none' }} />
-
-            {post.imageUrl && isVideo && (
+            ) : post.imageUrl && isVideo ? (
               <>
                 <video
                   ref={videoRef}
@@ -485,7 +488,7 @@ export default function PostCard({
                   onPause={() => setPlaying(false)}
                   style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', background: '#000' }}
                 />
-                {/* Play overlay — pointer-events:none → tıklama video'ya geçiyor */}
+                {/* Play overlay */}
                 {!playing && (
                   <div className="post-play-overlay">
                     <div style={{ background: 'rgba(0,0,0,0.35)', borderRadius: '50%', padding: 14 }}>
@@ -506,9 +509,8 @@ export default function PostCard({
                   {muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
                 </button>
               </>
-            )}
-            {!post.imageUrl && post.content && (
-              /* Text-only post with background */
+            ) : post.content && (
+              /* Text-only post */
               <div style={{
                 width: '100%', height: '100%',
                 background: `hsl(${(post.authorAvatar?.charCodeAt(0) || 0) * 30 % 360}, 40%, 12%)`,
@@ -521,16 +523,16 @@ export default function PostCard({
               </div>
             )}
 
-            {/* Double-tap heart — tıklanan pozisyonda çıkar */}
+            {/* Double-tap heart */}
             {doubleTapHeart && (
-              <div className="post-double-tap-heart" style={{ pointerEvents: 'none' }}>
+              <div className="post-double-tap-heart" style={{ pointerEvents: 'none', zIndex: 100 }}>
                 <span className="heart-pop" style={{ top: heartPos.y, left: heartPos.x }}>❤️</span>
               </div>
             )}
 
             {/* Aegis suspended overlay */}
             {isSuspended && isOwn && (
-              <div className="post-media-overlay">
+              <div className="post-media-overlay" style={{ zIndex: 110 }}>
                 <div style={{ background: 'rgba(0,0,0,0.6)', borderRadius: 10, padding: '12px 16px', textAlign: 'center' }}>
                   <Shield size={20} color="#FCAF45" />
                   <p style={{ color: '#FCAF45', fontSize: 12, fontWeight: 700, marginTop: 4 }}>İnceleme altında</p>
@@ -538,7 +540,6 @@ export default function PostCard({
               </div>
             )}
           </div>
-        )}
 
         {/* Actions */}
         <div className="post-actions">

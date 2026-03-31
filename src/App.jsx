@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ProfileProvider } from './hooks/useProfile.jsx';
+import { UIProvider } from './context/UIContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import { Login, Register } from './pages/Auth';
 import Feed       from './pages/Feed';
@@ -12,6 +13,7 @@ import Profile    from './pages/Profile';
 import Messages   from './pages/Messages';
 import ChatPage   from './pages/ChatPage';
 import PostDetail from './pages/PostDetail';
+import MainLayout      from './components/MainLayout';
 import AdminDashboard from './pages/AdminDashboard';
 import Home           from './pages/Home';
 import SafetyPage     from './pages/SafetyPage';
@@ -25,7 +27,9 @@ function Wrap({ children }) {
   return (
     <AuthProvider>
       <ProfileProvider>
-        {children}
+        <UIProvider>
+          {children}
+        </UIProvider>
       </ProfileProvider>
     </AuthProvider>
   );
@@ -45,25 +49,18 @@ export default function App() {
           <Route path="/register" element={<Register />} />
 
           {/* Main app — protected */}
-          <Route path="/"        element={<Home />} />
-          <Route path="/feed"    element={<Protected><Feed /></Protected>} />
-          <Route path="/explore" element={<Protected><Explore /></Protected>} />
-          <Route path="/share"   element={<Protected><Share /></Protected>} />
-          <Route path="/reels"   element={<Protected><Reels /></Protected>} />
-
-          {/* Profile — own + others */}
-          <Route path="/profile"    element={<Protected><Profile /></Protected>} />
-          <Route path="/user/:uid"  element={<Protected><Profile /></Protected>} />
-
-          {/* Messages */}
-          <Route path="/messages"          element={<Protected><Messages /></Protected>} />
-          <Route path="/messages/:partnerUid" element={<Protected><ChatPage /></Protected>} />
-
-          {/* Post detail */}
-          <Route path="/post-detail" element={<PostDetail />} />
-
-          {/* Admin */}
-          <Route path="/admin" element={<Protected><AdminDashboard /></Protected>} />
+          <Route element={<Protected><MainLayout /></Protected>}>
+            <Route path="/"        element={<Feed />} />
+            <Route path="/feed"    element={<Feed />} />
+            <Route path="/explore" element={<Explore />} />
+            <Route path="/reels"   element={<Reels />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/user/:uid" element={<Profile />} />
+            <Route path="/messages" element={<Messages />} />
+            <Route path="/messages/:partnerUid" element={<ChatPage />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/post-detail" element={<PostDetail />} />
+          </Route>
 
           {/* Public info pages */}
           <Route path="/safety"           element={<SafetyPage />} />
