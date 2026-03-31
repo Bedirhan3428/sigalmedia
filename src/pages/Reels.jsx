@@ -252,7 +252,7 @@ function ReelCard({ post, isActive, isAppVisible, isRendered, deviceId, likedTwe
 
   const bgHue = (post.authorAvatar?.charCodeAt(0) || 0) * 37 % 360;
   
-  // Navbar payını dikkate alarak hesaplama (Bu alan artık scroll itemin %100'ünü kaplar)
+  // İkonların ve yazıların en alt mesafesi
   const navbarH = 52; 
 
   return (
@@ -376,12 +376,16 @@ function ReelCard({ post, isActive, isAppVisible, isRendered, deviceId, likedTwe
         {isVideo && (
           <button
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
               const nm = !muted;
               setMuted(nm);
               if (videoRef.current) videoRef.current.muted = nm;
             }}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, WebkitTapHighlightColor: 'transparent' }}
+            onTouchStart={(e) => e.stopPropagation()} // Dokunma eventlerini yalıtıyor (Çözüm)
+            onTouchEnd={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, WebkitTapHighlightColor: 'transparent', zIndex: 20 }}
           >
             {muted
               ? <VolumeX size={26} color="#fff" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />
@@ -495,7 +499,7 @@ export default function Reels() {
   return (
     <div style={{
       position: 'relative', 
-      height: '100%', // 100dvh YERİNE %100 YAPILDI
+      height: 'calc(100dvh - 52px)', // Siyah Ekran Çözümü: Yükseklik Explicit (Belirgin) verildi
       width: '100%',
       maxWidth: 470, margin: '0 auto',
       background: '#000', overflow: 'hidden',
@@ -526,7 +530,7 @@ export default function Reels() {
               key={post._id}
               data-reel-index={i}
               style={{
-                height: '100%', // <---- SORUNU ÇÖZEN SATIR (Eskiden calc(100dvh - 52px) yazıyordu)
+                height: '100%', // %10'luk taşma sorununu (Taşmayı) engelleyen satır
                 scrollSnapAlign: 'start',
                 scrollSnapStop: 'always',
               }}
