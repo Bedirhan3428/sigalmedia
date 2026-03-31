@@ -6,9 +6,6 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../apiConfig';
 
-// ─── Global: tüm video elementlerini takip et ─────────────────────────────────
-const videoRegistry = new Set();
-
 // ─── Yorum Paneli ─────────────────────────────────────────────────────────────
 function CommentPanel({ tweetId, deviceId, onClose }) {
   const [comments, setComments] = useState([]);
@@ -165,36 +162,12 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
 
   const isVideo = post.mediaType === 'video' || post.imageUrl?.includes('/o/videos');
 
-  // ─── Registry'e kayıt + "play" eventinde diğerlerini sustur ───────────────
-  useEffect(() => {
-    const vid = videoRef.current;
-    if (!vid) return;
-
-    videoRegistry.add(vid);
-
-    const handlePlay = () => {
-      videoRegistry.forEach(v => {
-        if (v !== vid) {
-          v.pause();
-          v.currentTime = 0;
-        }
-      });
-    };
-
-    vid.addEventListener('play', handlePlay);
-
-    return () => {
-      videoRegistry.delete(vid);
-      vid.removeEventListener('play', handlePlay);
-      vid.pause();
-    };
-  }, []); // sadece mount/unmount
-
   // ─── Aktif/pasif kontrolü ─────────────────────────────────────────────────
   useEffect(() => {
     const vid = videoRef.current;
     if (!vid) return;
 
+    // Sekme arka plandayken veya değiştirildiğinde videoyu durdur
     const handleVisibility = () => {
       if (document.hidden) {
         vid.pause();
@@ -206,12 +179,21 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
     document.addEventListener('visibilitychange', handleVisibility);
 
     if (isActive && !paused) {
-      vid.play().catch(() => {});
+      // isActive ise videoyu oynatmayı dene ve promise'i yakala
+      const playPromise = vid.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.log("Video otomatik oynatma engellendi veya iptal edildi:", error);
+        });
+      }
     } else {
+      // Aktif değilse (veya duraklatıldıysa) videoyu durdur
       vid.pause();
+      
+      // Kaydırıldığında (aktif değilken) videoyu en başa sar ki tekrar geldiğinde baştan başlasın
       if (!isActive) {
         vid.currentTime = 0;
-        setPaused(false);
+        if (paused) setPaused(false);
       }
     }
 
@@ -224,8 +206,13 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
   const togglePlay = () => {
     const vid = videoRef.current;
     if (!vid) return;
-    if (vid.paused) { vid.play(); setPaused(false); }
-    else { vid.pause(); setPaused(true); }
+    if (vid.paused) { 
+      vid.play().catch(()=>{}); 
+      setPaused(false); 
+    } else { 
+      vid.pause(); 
+      setPaused(true); 
+    }
   };
 
   const triggerLike = (clientX, clientY, rect) => {
@@ -464,11 +451,13 @@ export default function Reels() {
     const obs = new IntersectionObserver(
       (entries) => {
         entries.forEach(entry => {
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.5)
+          // Eşik değeri 0.6 yapıldı. Yani video ekranın %60'ından fazlasını kaplarsa aktif olur.
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
             setActiveIndex(parseInt(entry.target.dataset.reelIndex));
+          }
         });
       },
-      { threshold: 0.5, root: container }
+      { threshold: 0.6, root: container }
     );
     items.forEach(item => obs.observe(item));
     return () => obs.disconnect();
@@ -544,3 +533,4 @@ export default function Reels() {
     </div>
   );
 }
+
