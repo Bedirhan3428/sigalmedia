@@ -151,7 +151,7 @@ function ReportModal({ tweetId, deviceId, onClose }) {
   const REASONS = ['Küfür/Hakaret', 'Spam', 'Kişisel Gizlilik İhlali', 'Diğer'];
   const [selected, setSelected] = useState(null);
   const [sending,  setSending]  = useState(false);
-  const [result,   setResult]   = useState(null); // 'success' | 'error' | 'already'
+  const [result,   setResult]   = useState(null);
 
   const handleReport = async () => {
     if (selected === null || sending) return;
@@ -184,9 +184,7 @@ function ReportModal({ tweetId, deviceId, onClose }) {
               <>
                 <CheckCircle size={40} color="var(--green)" style={{ marginBottom: 12 }} />
                 <div style={{ fontWeight: 600, fontSize: 15 }}>Şikayetin alındı</div>
-                <div style={{ color: 'var(--text-3)', fontSize: 13, marginTop: 6 }}>
-                  İçerik incelemeye alınacak. Teşekkürler.
-                </div>
+                <div style={{ color: 'var(--text-3)', fontSize: 13, marginTop: 6 }}>İçerik incelemeye alınacak. Teşekkürler.</div>
               </>
             )}
             {result === 'already' && (
@@ -208,41 +206,25 @@ function ReportModal({ tweetId, deviceId, onClose }) {
           </div>
         ) : (
           <>
-            <div style={{ padding: '16px 20px', fontSize: 14, color: 'var(--text-2)' }}>
-              Bu gönderiyi neden şikayet ediyorsun?
-            </div>
+            <div style={{ padding: '16px 20px', fontSize: 14, color: 'var(--text-2)' }}>Bu gönderiyi neden şikayet ediyorsun?</div>
             {REASONS.map((r, i) => (
               <button
-                key={i}
-                onClick={() => setSelected(i)}
+                key={i} onClick={() => setSelected(i)}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  width: '100%', padding: '14px 20px', background: 'none',
-                  border: 'none', borderBottom: '1px solid var(--border)',
-                  color: selected === i ? 'var(--accent)' : 'var(--text)',
+                  display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '14px 20px', background: 'none',
+                  border: 'none', borderBottom: '1px solid var(--border)', color: selected === i ? 'var(--accent)' : 'var(--text)',
                   fontSize: 15, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left',
                 }}
               >
-                <div style={{
-                  width: 20, height: 20, borderRadius: '50%',
-                  border: `2px solid ${selected === i ? 'var(--accent)' : 'var(--border)'}`,
-                  background: selected === i ? 'var(--accent)' : 'transparent',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                }}>
+                <div style={{ width: 20, height: 20, borderRadius: '50%', border: `2px solid ${selected === i ? 'var(--accent)' : 'var(--border)'}`, background: selected === i ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   {selected === i && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff' }} />}
                 </div>
                 {r}
               </button>
             ))}
             <div style={{ display: 'flex', gap: 10, padding: '16px 20px' }}>
-              <button onClick={onClose} style={{ flex: 1, padding: '11px 0', borderRadius: 8, background: 'var(--surface-3)', border: 'none', color: 'var(--text)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 600 }}>
-                İptal
-              </button>
-              <button
-                onClick={handleReport}
-                disabled={selected === null || sending}
-                style={{ flex: 1, padding: '11px 0', borderRadius: 8, background: selected !== null ? 'var(--red)' : 'var(--surface-3)', border: 'none', color: '#fff', cursor: selected !== null ? 'pointer' : 'not-allowed', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, opacity: selected === null ? 0.5 : 1 }}
-              >
+              <button onClick={onClose} style={{ flex: 1, padding: '11px 0', borderRadius: 8, background: 'var(--surface-3)', border: 'none', color: 'var(--text)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 600 }}>İptal</button>
+              <button onClick={handleReport} disabled={selected === null || sending} style={{ flex: 1, padding: '11px 0', borderRadius: 8, background: selected !== null ? 'var(--red)' : 'var(--surface-3)', border: 'none', color: '#fff', cursor: selected !== null ? 'pointer' : 'not-allowed', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, opacity: selected === null ? 0.5 : 1 }}>
                 {sending ? <Loader2 size={16} className="spin" /> : 'Gönder'}
               </button>
             </div>
@@ -288,7 +270,7 @@ export default function PostCard({
   const isSuspended = post.aegisStatus === 'suspended';
   const isRemoved   = post.aegisStatus === 'removed';
 
-  // Auto-play videos when they enter the screen, pause when they exit or app goes background
+  // Otomatik sessiz oynatma (Scroll ile görünür olunca oynat)
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !isVideo || isMulti) return;
@@ -298,7 +280,6 @@ export default function PostCard({
         video.pause();
         setPlaying(false);
       }
-      // playback will be resumed by IntersectionObserver if on screen
     };
 
     document.addEventListener('visibilitychange', handleVisibility);
@@ -326,26 +307,40 @@ export default function PostCard({
 
   if ((isSuspended || isRemoved) && !isOwn) return null;
 
-  // Double-tap to like
+  // ─── Tek/Çift Tıklama Mantığı (Timer) ─────────────────────────────────────────
+  const tapTimer = useRef(null);
   const lastTap = useRef(0);
   const [heartPos, setHeartPos] = useState({ x: '50%', y: '50%' });
 
   const handleMediaTap = (e) => {
+    e.preventDefault(); // İstem dışı text seçimini engeller
     const now = Date.now();
-    if (now - lastTap.current < 300) {
+    const isDouble = now - lastTap.current < 300;
+    lastTap.current = now;
+
+    if (isDouble) {
+      // Çift tıklama algılandı, tek tıklama timer'ını iptal et
+      if (tapTimer.current) { clearTimeout(tapTimer.current); tapTimer.current = null; }
+
       // Tıklanan konumu hesapla
+      let x = '50%', y = '50%';
       if (e?.currentTarget) {
         const rect = e.currentTarget.getBoundingClientRect();
-        const x = ((e.clientX - rect.left) / rect.width  * 100).toFixed(1) + '%';
-        const y = ((e.clientY - rect.top)  / rect.height * 100).toFixed(1) + '%';
-        setHeartPos({ x, y });
+        const clientX = e.changedTouches?.[0]?.clientX ?? e.clientX;
+        const clientY = e.changedTouches?.[0]?.clientY ?? e.clientY;
+        x = ((clientX - rect.left) / rect.width  * 100).toFixed(1) + '%';
+        y = ((clientY - rect.top)  / rect.height * 100).toFixed(1) + '%';
       }
-      // Double tap → beğen
+      setHeartPos({ x, y });
+      
+      // Animasyonu tetikle
       setDoubleTapHeart(false);
       requestAnimationFrame(() => {
         setDoubleTapHeart(true);
         setTimeout(() => setDoubleTapHeart(false), 800);
       });
+      
+      // Beğeni İsteği At
       if (!liked && !isOwn) {
         setLiked(true);
         setLikes(l => l + 1);
@@ -354,8 +349,16 @@ export default function PostCard({
           body: JSON.stringify({ deviceId }),
         }).catch(() => {});
       }
+    } else {
+      // Tek Tıklama için bekle (Belki kullanıcı 2. defa tıklar diye 280ms pay bırakıyoruz)
+      tapTimer.current = setTimeout(() => {
+        tapTimer.current = null;
+        // Eğer bu bir video ise, oynatıp durdurmak yerine Reels sayfasına yolla
+        if (isVideo && !isMulti) {
+          navigate(`/reels?startId=${post._id}`);
+        }
+      }, 280);
     }
-    lastTap.current = now;
   };
 
   const handleLike = async () => {
@@ -422,6 +425,15 @@ export default function PostCard({
 
   return (
     <>
+      <style>{`
+        @keyframes heartBurst {
+          0%   { transform: translate(-50%, -50%) scale(0.3); opacity: 1; }
+          40%  { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+          70%  { transform: translate(-50%, -50%) scale(0.95); opacity: 1; }
+          100% { transform: translate(-50%, -50%) scale(1.1); opacity: 0; }
+        }
+      `}</style>
+      
       {showOptions && (
         <OptionsModal
           isOwn={isOwn}
@@ -459,103 +471,100 @@ export default function PostCard({
         </div>
 
         {/* Media */}
-          <div
-            className="post-media post-media--square"
-            style={{ position: 'relative', WebkitUserSelect: 'none', userSelect: 'none' }}
-            onContextMenu={e => e.preventDefault()}
-            onClick={(e) => {
-              if (isMulti) return; // Carousel handles click
-              // Video ise oynat/durdur + çift tıklama
-              if (isVideo && videoRef.current) {
-                if (videoRef.current.paused) {
-                  videoRef.current.play().then(() => setPlaying(true)).catch(() => {});
-                } else {
-                  videoRef.current.pause();
-                  setPlaying(false);
-                }
-              }
-              handleMediaTap(e);
-            }}
-          >
-            {isMulti ? (
-              <MediaCarousel 
-                media={post.media} 
-                aspectRatio={1} 
-                onDoubleTap={handleMediaTap}
+        <div
+          className="post-media post-media--square"
+          style={{ position: 'relative', WebkitUserSelect: 'none', userSelect: 'none', outline: 'none' }}
+          onContextMenu={e => e.preventDefault()}
+          onTouchEnd={handleMediaTap}
+          onClick={(e) => {
+            if (e.detail > 0 && !('ontouchstart' in window)) handleMediaTap(e);
+          }}
+        >
+          {isMulti ? (
+            <MediaCarousel 
+              media={post.media} 
+              aspectRatio={1} 
+              onDoubleTap={handleMediaTap}
+            />
+          ) : post.imageUrl && !isVideo ? (
+            <img src={post.imageUrl} alt="" loading="lazy" />
+          ) : post.imageUrl && isVideo ? (
+            <>
+              <video
+                ref={videoRef}
+                src={post.imageUrl}
+                loop
+                muted={muted}
+                playsInline
+                preload="metadata"
+                onEnded={() => setPlaying(false)}
+                onPlay={(e) => {
+                  setPlaying(true);
+                  // Diğer açık videoları durdur
+                  document.querySelectorAll('video').forEach(v => {
+                    if (v !== e.target && !v.paused) v.pause();
+                  });
+                }}
+                onPause={() => setPlaying(false)}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }}
               />
-            ) : post.imageUrl && !isVideo ? (
-              <img src={post.imageUrl} alt="" loading="lazy" />
-            ) : post.imageUrl && isVideo ? (
-              <>
-                <video
-                  ref={videoRef}
-                  src={post.imageUrl}
-                  loop
-                  muted={muted}
-                  playsInline
-                  preload="metadata"
-                  onEnded={() => setPlaying(false)}
-                  onPlay={(e) => {
-                    setPlaying(true);
-                    document.querySelectorAll('video').forEach(v => {
-                      if (v !== e.target && !v.paused) v.pause();
-                    });
-                  }}
-                  onPause={() => setPlaying(false)}
-                  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', background: '#000' }}
-                />
-                {/* Play overlay */}
-                {!playing && (
-                  <div className="post-play-overlay">
-                    <div style={{ background: 'rgba(0,0,0,0.35)', borderRadius: '50%', padding: 14 }}>
-                      <Play size={30} color="#fff" fill="#fff" />
-                    </div>
-                  </div>
-                )}
-                {/* Ses butonu */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const newMuted = !muted;
-                    setMuted(newMuted);
-                    if (videoRef.current) videoRef.current.muted = newMuted;
-                  }}
-                  style={{ position: 'absolute', bottom: 10, right: 10, background: 'rgba(0,0,0,0.55)', border: 'none', borderRadius: '50%', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: 'pointer', zIndex: 5 }}
-                >
-                  {muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
-                </button>
-              </>
-            ) : post.content && (
-              /* Text-only post */
-              <div style={{
-                width: '100%', height: '100%',
-                background: `hsl(${(post.authorAvatar?.charCodeAt(0) || 0) * 30 % 360}, 40%, 12%)`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                padding: 24,
-              }}>
-                <p style={{ color: '#fff', fontSize: 18, fontWeight: 600, lineHeight: 1.5, textAlign: 'center' }}>
-                  {post.content.slice(0, 150)}
-                </p>
-              </div>
-            )}
+              {/* Play overlay'i kaldırdım çünkü artık tıklandığında Reels'e gidiyor, videoyu burada başlatmıyor */}
+              
+              {/* Ses butonu */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation(); // Butona tıklanırsa Reels sayfasına gitmesini engeller
+                  const newMuted = !muted;
+                  setMuted(newMuted);
+                  if (videoRef.current) videoRef.current.muted = newMuted;
+                }}
+                style={{ position: 'absolute', bottom: 10, right: 10, background: 'rgba(0,0,0,0.55)', border: 'none', borderRadius: '50%', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: 'pointer', zIndex: 5 }}
+              >
+                {muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+              </button>
+            </>
+          ) : post.content && (
+            /* Text-only post */
+            <div style={{
+              width: '100%', height: '100%',
+              background: `hsl(${(post.authorAvatar?.charCodeAt(0) || 0) * 30 % 360}, 40%, 12%)`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 24,
+            }}>
+              <p style={{ color: '#fff', fontSize: 18, fontWeight: 600, lineHeight: 1.5, textAlign: 'center' }}>
+                {post.content.slice(0, 150)}
+              </p>
+            </div>
+          )}
 
-            {/* Double-tap heart */}
-            {doubleTapHeart && (
-              <div className="post-double-tap-heart" style={{ pointerEvents: 'none', zIndex: 100 }}>
-                <span className="heart-pop" style={{ top: heartPos.y, left: heartPos.x }}>❤️</span>
-              </div>
-            )}
+          {/* Gerçek Ikonlu Kalp Patlama Animasyonu */}
+          {doubleTapHeart && (
+            <div 
+              style={{ 
+                position: 'absolute', left: heartPos.x, top: heartPos.y, 
+                transform: 'translate(-50%, -50%)', zIndex: 100, pointerEvents: 'none',
+                animation: 'heartBurst 0.8s ease-out forwards'
+              }}
+            >
+              <Heart 
+                size={90} 
+                fill="#FF3040" 
+                color="#FF3040" 
+                style={{ filter: 'drop-shadow(0 0 15px rgba(255,48,64,0.6)) drop-shadow(0 0 5px rgba(255,48,64,0.8))' }} 
+              />
+            </div>
+          )}
 
-            {/* Aegis suspended overlay */}
-            {isSuspended && isOwn && (
-              <div className="post-media-overlay" style={{ zIndex: 110 }}>
-                <div style={{ background: 'rgba(0,0,0,0.6)', borderRadius: 10, padding: '12px 16px', textAlign: 'center' }}>
-                  <Shield size={20} color="#FCAF45" />
-                  <p style={{ color: '#FCAF45', fontSize: 12, fontWeight: 700, marginTop: 4 }}>İnceleme altında</p>
-                </div>
+          {/* Aegis suspended overlay */}
+          {isSuspended && isOwn && (
+            <div className="post-media-overlay" style={{ zIndex: 110 }}>
+              <div style={{ background: 'rgba(0,0,0,0.6)', borderRadius: 10, padding: '12px 16px', textAlign: 'center' }}>
+                <Shield size={20} color="#FCAF45" />
+                <p style={{ color: '#FCAF45', fontSize: 12, fontWeight: 700, marginTop: 4 }}>İnceleme altında</p>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+        </div>
 
         {/* Actions */}
         <div className="post-actions">
