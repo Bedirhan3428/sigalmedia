@@ -146,7 +146,7 @@ function HeartBurst({ x, y, onDone }) {
 }
 
 // ─── Tek Reel Kartı ───────────────────────────────────────────────────────────
-function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
+function ReelCard({ post, isActive, isAppVisible, isRendered, deviceId, likedTweetIds }) {
   const navigate = useNavigate();
   const videoRef = useRef(null);
   const tapTimer = useRef(null);
@@ -162,79 +162,65 @@ function ReelCard({ post, isActive, isRendered, deviceId, likedTweetIds }) {
 
   const isVideo = post.mediaType === 'video' || post.imageUrl?.includes('/o/videos');
 
-  // --- HAYALET VİDEO (UNMOUNT LEAK) KORUMASI ---
+  // Promise Kapanımı (Closure) hatasını çözmek için anlık değerleri tutan Ref'ler
+  const isActiveRef = useRef(isActive);
+  const isAppVisibleRef = useRef(isAppVisible);
+  const pausedRef = useRef(paused);
+
+  useEffect(() => { isActiveRef.current = isActive; }, [isActive]);
+  useEffect(() => { isAppVisibleRef.current = isAppVisible; }, [isAppVisible]);
+  useEffect(() => { pausedRef.current = paused; }, [paused]);
+
+  // HAYALET VİDEO TEMİZLİĞİ: DOM'dan silinirken kaynağı kopar
   useEffect(() => {
     const vid = videoRef.current;
     return () => {
-      // Component ekrandan silinirken ("isRendered" false olduğunda)
       if (vid) {
         vid.pause();
-        vid.removeAttribute('src'); // Kaynağı zorla kopar
-        vid.load(); // Tarayıcının hafızasını zorla temizle
+        vid.removeAttribute('src');
+        vid.load();
       }
     };
   }, []);
 
-  // ─── Oynatma/Durdurma Kontrolü ───────────────────────────────────────────
+  // ─── TEMİZLENMİŞ OYNATMA KONTROLÜ ─────────────────────────────────────────
   useEffect(() => {
     const vid = videoRef.current;
     if (!vid) return;
 
-    const handleVisibility = () => {
-      if (document.hidden) {
-        vid.pause();
-      } else if (isActive && !paused) {
-        vid.play().catch(() => {});
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibility);
-
-    if (isActive) {
-      // --- NÜKLEER ÇÖZÜM: DOM'DAKİ DİĞER TÜM VİDEOLARI BUL VE SUSTUR ---
-      const allVideos = document.querySelectorAll('video');
-      allVideos.forEach(v => {
+    // Sadece eğer: Aktifse, Uygulama Ekrandaysa ve Manuel Durdurulmadıysa çalış
+    if (isActive && isAppVisible && !paused) {
+      // 1. NÜKLEER GÜVENLİK: DOM'da benden başka çalan video varsa zorla durdur
+      document.querySelectorAll('video').forEach(v => {
         if (v !== vid && !v.paused) {
           v.pause();
           v.currentTime = 0;
         }
       });
 
-      if (!paused) {
-        const playPromise = vid.play();
-        if (playPromise !== undefined) {
-          playPromise.then(() => {
-            // Video oynamaya başladıktan sonra hala aktif mi diye kontrol et
-            if (!isActive) {
-              vid.pause();
-              vid.currentTime = 0;
-            }
-          }).catch(() => {});
-        }
+      // 2. Oynatmayı başlat
+      const playPromise = vid.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          // 3. Promise çözülene kadar kullanıcı çoktan kaydırdıysa videoyu anında sustur
+          if (!isActiveRef.current || !isAppVisibleRef.current || pausedRef.current) {
+            vid.pause();
+          }
+        }).catch(() => {});
       }
     } else {
-      // Aktif değilse kesinlikle durdur
+      // Aktif değilse, arka plandaysa veya duraklatıldıysa anında durdur
       vid.pause();
-      vid.currentTime = 0; // Başa sar
-      if (paused) setPaused(false);
+      if (!isActive) {
+        vid.currentTime = 0; // Başa sar
+        if (paused) setPaused(false); // Geri gelince kapalı kalmasın
+      }
     }
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibility);
-      if (vid) vid.pause(); // Etkileşim bittiğinde durdur
-    };
-  }, [isActive, paused]);
+    // Artık visibilitychange event listener BURADA YOK! Sorun çıkaran yer burasıydı.
+  }, [isActive, isAppVisible, paused]);
 
   const togglePlay = () => {
-    const vid = videoRef.current;
-    if (!vid) return;
-    if (vid.paused) { 
-      vid.play().catch(()=>{}); 
-      setPaused(false); 
-    } else { 
-      vid.pause(); 
-      setPaused(true); 
-    }
+    setPaused(prev => !prev);
   };
 
   const triggerLike = (clientX, clientY, rect) => {
@@ -453,6 +439,17 @@ export default function Reels() {
   const [fetchingMore, setFetchingMore] = useState(false);
   const scrollRef = useRef(null);
 
+  // ANA UYGULAMA GÖRÜNÜRLÜK STATE'İ (Eski hatalı kodu bu global state çözüyor)
+  const [isAppVisible, setIsAppVisible] = useState(!document.hidden);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsAppVisible(!document.hidden);
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   useEffect(() => {
     Promise.all([
       fetch(`${API_URL}/api/feed`).then(r => r.json()),
@@ -543,6 +540,7 @@ export default function Reels() {
               <ReelCard
                 post={post}
                 isActive={i === activeIndex}
+                isAppVisible={isAppVisible} // KARTLARA UYGULAMANIN AÇIK OLDUĞU BİLGİSİ BURADAN GİDİYOR
                 isRendered={i >= activeIndex - 1 && i <= activeIndex + 2}
                 deviceId={user?.uid}
                 likedTweetIds={likedIds}
