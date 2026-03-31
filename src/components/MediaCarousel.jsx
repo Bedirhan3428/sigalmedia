@@ -17,6 +17,22 @@ export default function MediaCarousel({ media = [], aspectRatio = 1, showIndicat
     }
   };
 
+  // Pause videos on background/unmount
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden) {
+        const videos = scrollRef.current?.querySelectorAll('video');
+        videos?.forEach(v => v.pause());
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      const videos = scrollRef.current?.querySelectorAll('video');
+      videos?.forEach(v => v.pause());
+    };
+  }, []);
+
   const scrollTo = (index) => {
     if (!scrollRef.current) return;
     scrollRef.current.scrollTo({
