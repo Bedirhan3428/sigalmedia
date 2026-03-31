@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, Play, Loader2 } from 'lucide-react';
+import { Search, X, Play, Loader2, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PostCard from '../components/PostCard';
 import { API_URL } from '../apiConfig';
@@ -13,15 +13,17 @@ export default function Explore() {
 
   const [query,      setQuery]      = useState('');
   const [category,   setCategory]   = useState('Hepsi');
-  const [posts,      setPosts]       = useState([]);
-  const [users,      setUsers]       = useState([]);
-  const [loading,    setLoading]     = useState(true);
-  const [searching,  setSearching]   = useState(false);
-  const [selectedPost, setSelectedPost] = useState(null);
-  const [page,       setPage]        = useState(1);
-  const [hasMore,    setHasMore]     = useState(true);
-  const observerRef                  = useRef();
-  const bottomRef                    = useRef();
+  const [posts,      setPosts]      = useState([]);
+  const [users,      setUsers]      = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [searching,  setSearching]  = useState(false);
+  
+  // Sadece tek postu değil, seçilen postun ID'sini tutuyoruz
+  const [selectedPostId, setSelectedPostId] = useState(null);
+  
+  const [page,       setPage]       = useState(1);
+  const [hasMore,    setHasMore]    = useState(true);
+  const bottomRef                   = useRef();
 
   // Fetch explore posts
   const fetchPosts = useCallback(async (reset = false) => {
@@ -42,7 +44,6 @@ export default function Explore() {
           url = `${API_URL}/api/feed/following/${user?.uid}`;
           break;
         default:
-          // Mixed: combine popular and new with randomization
           url = `${API_URL}/api/feed?page=${pageNum}`;
       }
 
@@ -81,7 +82,22 @@ export default function Explore() {
     }, { threshold: 0.1 });
     obs.observe(el);
     return () => obs.disconnect();
-  }, [loading, hasMore, fetchPosts]);
+  }, [loading, hasMore, fetchPosts, selectedPostId]); 
+  // selectedPostId'yi ekledik ki görünüm değiştiğinde Observer yeniden tetiklensin
+
+  // Kullanıcı grid'den bir post seçtiğinde otomatik olarak o posta kaydır
+  useEffect(() => {
+    if (selectedPostId) {
+      // DOM'un render olması için çok kısa bir bekleme
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`post-${selectedPostId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'auto', block: 'start' });
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedPostId]);
 
   // User search
   const handleSearch = async (q) => {
@@ -96,32 +112,56 @@ export default function Explore() {
     finally { setSearching(false); }
   };
 
-  // Grid layout: every 7th post is double-sized
   const gridPosts = posts.filter(p => p.imageUrl || p.content);
 
-  if (selectedPost) {
+  // ─── DETAY / AKIŞ GÖRÜNÜMÜ (SONSUZ DÖNGÜ) ──────────────────────────────────
+  if (selectedPostId) {
     return (
-      <div className="page">
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, background: 'var(--bg)', zIndex: 10 }}>
-          <button onClick={() => setSelectedPost(null)} style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer' }}>
-            <X size={22} />
+      <div className="page" style={{ height: '100dvh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        {/* Sticky Header */}
+        <div style={{ 
+          padding: '12px 16px', borderBottom: '1px solid var(--border)', 
+          display: 'flex', alignItems: 'center', gap: 16, 
+          position: 'sticky', top: 0, background: 'var(--bg)', zIndex: 99 
+        }}>
+          <button onClick={() => setSelectedPostId(null)} style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+            <ArrowLeft size={24} />
           </button>
-          <span style={{ fontWeight: 600 }}>Gönderi</span>
+          <span style={{ fontWeight: 700, fontSize: 17 }}>Keşfet</span>
         </div>
-        <PostCard
-          post={selectedPost}
-          deviceId={user?.uid}
-          likedTweetIds={[]}
-          likedCommentIds={[]}
-          followingIds={[]}
-          savedTweetIds={[]}
-          />
+
+        {/* Sonsuz Akış Gönderileri */}
+        <div style={{ flex: 1 }}>
+          {posts.map((post) => (
+            <div 
+              key={post._id} 
+              id={`post-${post._id}`} 
+              style={{ scrollMarginTop: '55px' }} // Header'ın postun üstünü kapatmasını engeller
+            >
+              <PostCard
+                post={post}
+                deviceId={user?.uid}
+                likedTweetIds={[]} // Beğeni datalarınızı context'ten veya üstten alabilirsiniz
+                likedCommentIds={[]}
+                followingIds={[]}
+                savedTweetIds={[]}
+              />
+            </div>
+          ))}
+
+          {/* Akışın en altına geldiğinde yeni postları çeken dedektör */}
+          <div ref={bottomRef} style={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {loading && <Loader2 size={24} className="spin" color="#737373" />}
+            {!loading && !hasMore && <span style={{ color: '#737373', fontSize: 13 }}>Tüm gönderileri gördün 🎉</span>}
+          </div>
+        </div>
       </div>
     );
   }
 
+  // ─── GRID (KEŞFET) GÖRÜNÜMÜ ────────────────────────────────────────────────
   return (
-    <div className="page">
+    <div className="page" style={{ height: '100dvh', overflowY: 'auto' }}>
       {/* Search bar */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 99,
@@ -215,7 +255,7 @@ export default function Explore() {
       ) : (
         /* Explore grid */
         <>
-          {loading ? (
+          {loading && posts.length === 0 ? (
             <div className="explore-grid">
               {Array.from({ length: 9 }).map((_, i) => (
                 <div key={i} className={`explore-item ${i % 7 === 0 ? 'explore-item--large' : ''}`}>
@@ -230,7 +270,7 @@ export default function Explore() {
                   key={post._id}
                   className="explore-item"
                   style={i % 7 === 0 ? { gridColumn: 'span 2', gridRow: 'span 2' } : {}}
-                  onClick={() => setSelectedPost(post)}
+                  onClick={() => setSelectedPostId(post._id)} // Tıklanan postun ID'sini set et
                 >
                   {post.imageUrl ? (
                     <>
@@ -270,8 +310,10 @@ export default function Explore() {
             </div>
           )}
 
-          {/* Infinite scroll trigger */}
-          <div ref={bottomRef} style={{ height: 40 }} />
+          {/* Infinite scroll trigger (Grid için) */}
+          <div ref={bottomRef} style={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+             {loading && posts.length > 0 && <Loader2 size={24} className="spin" color="#737373" />}
+          </div>
           {!loading && !hasMore && posts.length > 0 && (
             <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-3)', fontSize: 13 }}>
               Hepsi bu kadar! 🎉
