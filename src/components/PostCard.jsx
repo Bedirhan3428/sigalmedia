@@ -307,8 +307,7 @@ export default function PostCard({
 
   if ((isSuspended || isRemoved) && !isOwn) return null;
 
-  // ─── Tek/Çift Tıklama Mantığı (Timer) ─────────────────────────────────────────
-  const tapTimer = useRef(null);
+  // ─── Çift Tıklama Mantığı ───────────────────────────────────────────────────
   const lastTap = useRef(0);
   const [heartPos, setHeartPos] = useState({ x: '50%', y: '50%' });
 
@@ -319,9 +318,6 @@ export default function PostCard({
     lastTap.current = now;
 
     if (isDouble) {
-      // Çift tıklama algılandı, tek tıklama timer'ını iptal et
-      if (tapTimer.current) { clearTimeout(tapTimer.current); tapTimer.current = null; }
-
       // Tıklanan konumu hesapla
       let x = '50%', y = '50%';
       if (e?.currentTarget) {
@@ -349,16 +345,8 @@ export default function PostCard({
           body: JSON.stringify({ deviceId }),
         }).catch(() => {});
       }
-    } else {
-      // Tek Tıklama için bekle (Belki kullanıcı 2. defa tıklar diye 280ms pay bırakıyoruz)
-      tapTimer.current = setTimeout(() => {
-        tapTimer.current = null;
-        // Eğer bu bir video ise, oynatıp durdurmak yerine Reels sayfasına yolla
-        if (isVideo && !isMulti) {
-          navigate(`/reels?startId=${post._id}`);
-        }
-      }, 280);
     }
+    // Tek tıklama aksiyonları tamamen kaldırıldı! Artık Reels'e yönlendirmiyor.
   };
 
   const handleLike = async () => {
@@ -508,12 +496,10 @@ export default function PostCard({
                 onPause={() => setPlaying(false)}
                 style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }}
               />
-              {/* Play overlay'i kaldırdım çünkü artık tıklandığında Reels'e gidiyor, videoyu burada başlatmıyor */}
-              
               {/* Ses butonu */}
               <button
                 onClick={(e) => {
-                  e.stopPropagation(); // Butona tıklanırsa Reels sayfasına gitmesini engeller
+                  e.stopPropagation(); 
                   const newMuted = !muted;
                   setMuted(newMuted);
                   if (videoRef.current) videoRef.current.muted = newMuted;
