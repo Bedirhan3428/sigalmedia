@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Edit, Search, Loader2, MessageCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -14,7 +14,6 @@ function timeAgo(ts) {
   return `${Math.floor(diff / 86400)}g`;
 }
 
-// ─── New conversation search ──────────────────────────────────────────────────
 function NewConvModal({ myUid, onSelect, onClose }) {
   const [query,   setQuery]   = useState('');
   const [results, setResults] = useState([]);
@@ -92,7 +91,6 @@ function NewConvModal({ myUid, onSelect, onClose }) {
   );
 }
 
-// ─── Messages list ────────────────────────────────────────────────────────────
 export default function Messages() {
   const user     = useAuth();
   const navigate = useNavigate();
@@ -103,12 +101,10 @@ export default function Messages() {
 
   useEffect(() => {
     if (!user?.uid) return;
-
     const unsub = subscribeToConversations(user.uid, (convs) => {
       setConversations(convs);
       setLoading(false);
     });
-
     return unsub;
   }, [user?.uid]);
 
@@ -129,7 +125,7 @@ export default function Messages() {
         </button>
       </div>
 
-      {/* List */}
+      {/* Liste */}
       {loading ? (
         <div className="center-loader">
           <div className="spinner" />
@@ -155,8 +151,8 @@ export default function Messages() {
       ) : (
         <div className="message-list">
           {conversations.map(conv => {
-            const partner = conv.partner || {};
-            const lastMsg = conv.lastMessage;
+            const partner  = conv.partner || {};
+            const lastMsg  = conv.lastMessage;
             const isUnread = lastMsg && lastMsg.senderId !== user.uid && lastMsg.read === false;
 
             return (
