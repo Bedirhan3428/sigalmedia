@@ -10,6 +10,7 @@ import { auth, storage } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile.jsx';
 import PostCard from '../components/PostCard';
+import ImageCropper from '../components/ImageCropper';
 import { useUI } from '../context/UIContext';
 import { API_URL } from '../apiConfig';
 
@@ -82,7 +83,7 @@ function SettingsModal({ onClose, onEditOpen, onLogout }) {
 }
 
 // ─── Profil Düzenle ───────────────────────────────────────────────────────────
-function EditProfileModal({ profile, onClose, onSave }) {
+function EditProfileModal({ profile, onClose, onSave, onEditAvatar }) {
   const user               = useAuth();
   const [username, setUser] = useState(profile?.username || '');
   const [bio,      setBio]  = useState(profile?.bio      || '');
@@ -123,7 +124,21 @@ function EditProfileModal({ profile, onClose, onSave }) {
           </button>
         </div>
 
-        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Avatar Section */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: 12, border: '1px solid #262626' }}>
+            <MiniAvatar username={profile?.username} avatarUrl={profile?.avatarUrl} size={56} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, fontSize: 14, color: '#F5F5F5' }}>Profil Fotoğrafı</div>
+              <button 
+                onClick={() => { onEditAvatar(); }}
+                style={{ background: 'none', border: 'none', color: '#0095F6', fontSize: 13, fontWeight: 700, padding: '4px 0', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Fotoğrafı Değiştir
+              </button>
+            </div>
+          </div>
+
           {/* Username */}
           <div>
             <label style={{ fontSize: 12, color: '#A8A8A8', fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.05em' }}>
@@ -363,6 +378,7 @@ export default function Profile() {
           profile={myProfile || profile}
           onClose={() => setModal('')}
           onSave={(updated) => { setProfile(updated); setProfileState(updated); }}
+          onEditAvatar={() => { setModal(''); fileRef.current?.click(); }}
         />
       )}
       {modal === 'followers' && (
