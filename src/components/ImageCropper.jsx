@@ -1,226 +1,234 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { X, ZoomIn, ZoomOut, RotateCw, Check } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import Cropper from 'react-easy-crop';
+import { X, ZoomIn, ZoomOut, RotateCw, Check, Loader2 } from 'lucide-react';
+import { getCroppedImg } from '../utils/cropUtils';
 
 /**
- * ImageCropper — canvas tabanlı kırpma popup'ı
+ * ImageCropper — Modern profile picture cropping component using react-easy-crop
  * Props:
- *   src      : string  — önizleme URL
- *   aspect   : number  — en-boy oranı (1 = kare, 4/5 = portrait, 16/9 = landscape)
+ *   src      : string  — Image URL (blob or dataUrl)
+ *   aspect   : number  — Aspect ratio (default 1 for profile)
  *   onCrop   : (blob) => void
  *   onCancel : () => void
  */
 export default function ImageCropper({ src, aspect = 1, onCrop, onCancel }) {
-  const canvasRef     = useRef(null);
-  const imgRef        = useRef(null);
-  const containerRef  = useRef(null);
-
-  const [scale,    setScale]    = useState(1);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
-  const [offset,   setOffset]   = useState({ x: 0, y: 0 });
-  const [dragging, setDragging] = useState(false);
-  const dragStart              = useRef({ x: 0, y: 0, ox: 0, oy: 0 });
-  const [imgLoaded, setImgLoaded] = useState(false);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const CROP_SIZE = 320; // px — kırpma alanı boyutu
+  const onCropComplete = useCallback((_croppedArea, croppedAreaPixels) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
 
-  // Canvas'a çiz
-  const draw = useCallback(() => {
-    const canvas = canvasRef.current;
-    const img    = imgRef.current;
-    if (!canvas || !img || !imgLoaded) return;
-
-    const ctx = canvas.getContext('2d');
-    canvas.width  = CROP_SIZE;
-    canvas.height = CROP_SIZE / aspect;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.save();
-
-    const cx = canvas.width  / 2;
-    const cy = canvas.height / 2;
-
-    ctx.translate(cx + offset.x, cy + offset.y);
-    ctx.rotate((rotation * Math.PI) / 180);
-    ctx.scale(scale, scale);
-
-    // Fit image in crop area initially
-    const baseScale = Math.max(
-      canvas.width  / img.naturalWidth,
-      canvas.height / img.naturalHeight
-    );
-    ctx.scale(baseScale, baseScale);
-    ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
-    ctx.restore();
-  }, [scale, rotation, offset, imgLoaded, aspect]);
-
-  useEffect(() => { draw(); }, [draw]);
-
-  // Pointer events for drag
-  const onPointerDown = (e) => {
-    setDragging(true);
-    dragStart.current = {
-      x: e.clientX, y: e.clientY,
-      ox: offset.x,  oy: offset.y,
-    };
-    e.currentTarget.setPointerCapture(e.pointerId);
-  };
-
-  const onPointerMove = (e) => {
-    if (!dragging) return;
-    const dx = e.clientX - dragStart.current.x;
-    const dy = e.clientY - dragStart.current.y;
-    setOffset({ x: dragStart.current.ox + dx, y: dragStart.current.oy + dy });
-  };
-
-  const onPointerUp = () => setDragging(false);
-
-  // Pinch-to-zoom (touch)
-  const lastDist = useRef(0);
-  const onTouchMove = (e) => {
-    if (e.touches.length === 2) {
-      const dx   = e.touches[0].clientX - e.touches[1].clientX;
-      const dy   = e.touches[0].clientY - e.touches[1].clientY;
-      const dist = Math.hypot(dx, dy);
-      if (lastDist.current > 0) {
-        const delta = dist / lastDist.current;
-        setScale(s => Math.min(Math.max(s * delta, 0.5), 5));
-      }
-      lastDist.current = dist;
+  const handleDone = async () => {
+    if (!croppedAreaPixels) return;
+    setLoading(true);
+    try {
+      const croppedImage = await getCroppedImg(src, croppedAreaPixels, rotation);
+      onCrop(croppedImage);
+    } catch (e) {
+      console.error(e);
+      alert('Fotoğraf işlenirken bir hata oluştu.');
+    } finally {
+      setLoading(false);
     }
   };
-  const onTouchEnd = () => { lastDist.current = 0; };
-
-  // Export cropped image
-  const handleCrop = () => {
-    const canvas  = canvasRef.current;
-    const quality = 0.88;
-    canvas.toBlob(
-      (blob) => { if (blob) onCrop(blob); },
-      'image/jpeg',
-      quality
-    );
-  };
-
-  const cropH = CROP_SIZE / aspect;
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 3000,
-      background: 'rgba(0,0,0,0.95)',
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-    }}>
+    <div style={overlayStyle}>
       {/* Header */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        width: '100%', maxWidth: 480, padding: '12px 16px',
-        borderBottom: '1px solid #262626',
-      }}>
-        <button onClick={onCancel}
-                style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 6 }}>
-          <X size={22} />
+      <div style={headerStyle}>
+        <button onClick={onCancel} style={iconBtnStyle}>
+          <X size={24} />
         </button>
-        <span style={{ fontWeight: 700, fontSize: 16, color: '#fff' }}>Kırp</span>
-        <button onClick={handleCrop}
-                style={{ background: 'none', border: 'none', color: '#0095F6', fontWeight: 700, fontSize: 15, cursor: 'pointer', fontFamily: 'inherit', padding: 6 }}>
-          Tamam
+        <span style={titleStyle}>Profili Düzenle</span>
+        <button 
+          onClick={handleDone} 
+          disabled={loading}
+          style={{ ...actionBtnStyle, opacity: loading ? 0.6 : 1 }}
+        >
+          {loading ? <Loader2 size={20} className="spin" /> : 'Kaydet'}
         </button>
       </div>
 
-      {/* Hidden img for source */}
-      <img
-        ref={imgRef}
-        src={src}
-        alt=""
-        crossOrigin="anonymous"
-        onLoad={() => setImgLoaded(true)}
-        style={{ display: 'none' }}
-      />
-
-      {/* Canvas crop area */}
-      <div
-        ref={containerRef}
-        style={{
-          position: 'relative',
-          width:    CROP_SIZE,
-          height:   cropH,
-          cursor:   dragging ? 'grabbing' : 'grab',
-          overflow: 'hidden',
-          borderRadius: aspect === 1 ? '50%' : 8,
-          border: '2px solid rgba(255,255,255,0.2)',
-          margin: '24px 0',
-          touchAction: 'none',
-        }}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerLeave={onPointerUp}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-      >
-        <canvas
-          ref={canvasRef}
-          style={{ display: 'block', width: '100%', height: '100%' }}
+      {/* Cropper Container */}
+      <div style={cropperContainerStyle}>
+        <Cropper
+          image={src}
+          crop={crop}
+          zoom={zoom}
+          rotation={rotation}
+          aspect={aspect}
+          cropShape={aspect === 1 ? 'round' : 'rect'}
+          showGrid={true}
+          onCropChange={setCrop}
+          onRotationChange={setRotation}
+          onCropComplete={onCropComplete}
+          onZoomChange={setZoom}
+          style={{
+            containerStyle: { background: '#000' },
+            cropAreaStyle: { border: '2px solid rgba(255,255,255,0.4)' }
+          }}
         />
-
-        {/* Grid overlay */}
-        <div style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none',
-          backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
-          `,
-          backgroundSize: `${CROP_SIZE/3}px ${cropH/3}px`,
-        }} />
       </div>
 
       {/* Controls */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center', padding: '0 24px', width: '100%', maxWidth: 480 }}>
-        {/* Zoom slider */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
-          <ZoomOut size={18} color="#A8A8A8" />
+      <div style={controlsWrapperStyle}>
+        <div style={controlRowStyle}>
+          <ZoomOut size={18} color="#737373" />
           <input
-            type="range" min="0.5" max="4" step="0.05"
-            value={scale}
-            onChange={e => setScale(parseFloat(e.target.value))}
-            style={{ flex: 1, accentColor: '#0095F6' }}
+            type="range"
+            value={zoom}
+            min={1}
+            max={3}
+            step={0.1}
+            aria-labelledby="Zoom"
+            onChange={(e) => setZoom(parseFloat(e.target.value))}
+            style={sliderStyle}
           />
-          <ZoomIn size={18} color="#A8A8A8" />
+          <ZoomIn size={18} color="#0095F6" />
         </div>
 
-        {/* Action buttons */}
-        <div style={{ display: 'flex', gap: 12 }}>
-          {/* Rotate */}
-          <button
-            onClick={() => setRotation(r => (r + 90) % 360)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '8px 16px', borderRadius: 8,
-              background: 'var(--surface-3,#1C1C1C)', border: '1px solid #262626',
-              color: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit',
-            }}
+        <div style={actionRowStyle}>
+          <button 
+            onClick={() => setRotation((r) => (r + 90) % 360)}
+            style={toolBtnStyle}
           >
-            <RotateCw size={16} /> Döndür
+            <RotateCw size={16} /> 90° Döndür
           </button>
-
-          {/* Reset */}
-          <button
-            onClick={() => { setScale(1); setRotation(0); setOffset({ x: 0, y: 0 }); }}
-            style={{
-              padding: '8px 16px', borderRadius: 8,
-              background: 'transparent', border: '1px solid #262626',
-              color: '#A8A8A8', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit',
-            }}
+          <button 
+            onClick={() => { setZoom(1); setRotation(0); setCrop({ x: 0, y: 0 }); }}
+            style={{ ...toolBtnStyle, color: '#737373', border: '1px solid #262626' }}
           >
             Sıfırla
           </button>
         </div>
-
-        {/* Aspect ratio hints */}
-        <p style={{ fontSize: 12, color: '#737373', textAlign: 'center' }}>
-          Resmi sürükleyerek konumlandır · Kaydırarak büyüt
+        
+        <p style={hintStyle}>
+          Görseli sürükleyerek veya iki parmakla hizalayabilirsin.
         </p>
       </div>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .spin { animation: spin 1s linear infinite; }
+      `}} />
     </div>
   );
 }
+
+// ── Styles ──────────────────────────────────────────────────────────────────
+
+const overlayStyle = {
+  position: 'fixed',
+  inset: 0,
+  zIndex: 3000,
+  background: '#000',
+  display: 'flex',
+  flexDirection: 'column',
+  animation: 'fadeIn 0.2s ease-out',
+};
+
+const headerStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: '12px 16px',
+  background: 'rgba(0,0,0,0.85)',
+  backdropFilter: 'blur(10px)',
+  borderBottom: '1px solid #262626',
+  paddingTop: 'max(12px, env(safe-area-inset-top))',
+};
+
+const iconBtnStyle = {
+  background: 'none',
+  border: 'none',
+  color: '#fff',
+  padding: 8,
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+};
+
+const titleStyle = {
+  fontWeight: 700,
+  fontSize: 16,
+  color: '#fff',
+};
+
+const actionBtnStyle = {
+  background: 'none',
+  border: 'none',
+  color: '#0095F6',
+  fontWeight: 700,
+  fontSize: 16,
+  cursor: 'pointer',
+  padding: '8px 12px',
+  minWidth: 60,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+};
+
+const cropperContainerStyle = {
+  position: 'relative',
+  flex: 1,
+  width: '100%',
+  background: '#000',
+};
+
+const controlsWrapperStyle = {
+  padding: '24px 20px',
+  background: 'linear-gradient(to top, #000 80%, transparent)',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 20,
+  paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
+};
+
+const controlRowStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 16,
+  width: '100%',
+};
+
+const sliderStyle = {
+  flex: 1,
+  height: 4,
+  borderRadius: 2,
+  background: '#262626',
+  appearance: 'none',
+  outline: 'none',
+  accentColor: '#0095F6',
+};
+
+const actionRowStyle = {
+  display: 'flex',
+  gap: 12,
+};
+
+const toolBtnStyle = {
+  flex: 1,
+  background: '#1C1C1C',
+  border: '1px solid #333',
+  borderRadius: 12,
+  color: '#fff',
+  padding: '12px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 10,
+  fontSize: 14,
+  fontWeight: 600,
+  cursor: 'pointer',
+};
+
+const hintStyle = {
+  fontSize: 12,
+  color: '#737373',
+  textAlign: 'center',
+  margin: 0,
+};

@@ -20,6 +20,8 @@
     "nsfwjs": "^4.2.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-easy-crop": "^5.5.7",
+    "react-rnd": "^10.5.3",
     "react-router-dom": "^7.13.1"
   },
   "devDependencies": {
