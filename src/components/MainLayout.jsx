@@ -9,8 +9,12 @@ export default function MainLayout() {
 
   return (
     <div className="main-layout" style={{ position: 'relative', minHeight: '100dvh' }}>
-      {/* Dynamic Content */}
-      <div className="content-area">
+      
+      {/* Dynamic Content - DÜZELTME BURADA YAPILDI */}
+      <div 
+        className="content-area" 
+        style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom))' }}
+      >
         <Outlet />
       </div>
 

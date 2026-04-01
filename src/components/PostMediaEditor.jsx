@@ -11,7 +11,7 @@ import { compressImage, IMAGE_ACCEPT } from '../utils/mediaCompressor';
  *   onCancel     : () => void
  *   maxItems     : number
  */
-export default function PostMediaEditor({ initialMedia = [], onSave, onCancel, maxItems = 5 }) {
+export default function PostMediaEditor({ initialMedia = [], onSave, onCancel, maxItems = 10 }) {
   const [items, setItems] = useState(initialMedia);
   const [activeIndex, setActiveIndex] = useState(0);
   const [editingIndex, setEditingIndex] = useState(null);

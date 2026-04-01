@@ -14,7 +14,7 @@ import { useProfile } from '../hooks/useProfile.jsx';
 import PostImageCropper from '../components/PostImageCropper';
 
 const MAX_CHARS = 280;
-const MAX_VIDEO_MB = 50;
+const MAX_VIDEO_MB = 100;
 
 const STEP = { SELECT: 'select', PREVIEW: 'preview', CAPTION: 'caption' };
 
