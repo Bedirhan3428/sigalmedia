@@ -24,7 +24,6 @@ function dayLabel(ts) {
   return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
 }
 
-// Animated typing dots bubble
 function TypingBubble() {
   return (
     <div style={{
@@ -70,17 +69,14 @@ export default function ChatPage() {
   const [loading,       setLoading]       = useState(true);
   const [partnerTyping, setPartnerTyping] = useState(false);
 
-  // Load partner profile + create/get conversation
   useEffect(() => {
     if (!user?.uid || !partnerUid) return;
-
     Promise.all([
       fetch(`${API_URL}/api/public-user/${partnerUid}`).then(r => r.json()),
       fetch(`${API_URL}/api/user/${user.uid}`).then(r => r.json()),
     ]).then(async ([partnerData, myData]) => {
       const p = partnerData.username ? partnerData : partnerData.user;
       setPartner(p);
-
       const cid = await getOrCreateConversation(user.uid, partnerUid, {
         username:  p.username,
         avatarUrl: p.avatarUrl || null,
@@ -90,7 +86,6 @@ export default function ChatPage() {
     }).catch(() => setLoading(false));
   }, [user?.uid, partnerUid]);
 
-  // Subscribe to messages
   useEffect(() => {
     if (!convId) return;
     const unsub = subscribeToMessages(convId, (msgs) => {
@@ -101,7 +96,6 @@ export default function ChatPage() {
     return unsub;
   }, [convId, user?.uid]);
 
-  // Listen for partner typing status
   useEffect(() => {
     if (!convId || !partnerUid) return;
     const r = dbRef(database, `typing/${convId}/${partnerUid}`);
@@ -109,7 +103,6 @@ export default function ChatPage() {
     return () => unsub();
   }, [convId, partnerUid]);
 
-  // Clear own typing flag on unmount / page leave
   useEffect(() => {
     return () => {
       clearTimeout(typingTimerRef.current);
@@ -119,18 +112,13 @@ export default function ChatPage() {
     };
   }, [convId, user?.uid]);
 
-  // Scroll to bottom when typing indicator appears
-  useEffect(() => {
-    if (partnerTyping) scrollToBottom();
-  }, [partnerTyping]);
-
+  useEffect(() => { if (partnerTyping) scrollToBottom(); }, [partnerTyping]);
   useEffect(() => { scrollToBottom(); }, [messages.length]);
 
   const scrollToBottom = () => {
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
   };
 
-  // Broadcast own typing status
   const handleTextChange = (e) => {
     setText(e.target.value.slice(0, 1000));
     if (!convId || !user?.uid) return;
@@ -141,14 +129,11 @@ export default function ChatPage() {
     }, 2500);
   };
 
-  // Send message
   const handleSend = async () => {
     if ((!text.trim() && !imagePreview) || sending || !convId) return;
     setSending(true);
-
     clearTimeout(typingTimerRef.current);
     set(dbRef(database, `typing/${convId}/${user.uid}`), false).catch(() => {});
-
     try {
       if (imagePreview) {
         const path = `dm-images/${convId}/${Date.now()}.jpg`;
@@ -176,7 +161,7 @@ export default function ChatPage() {
     e.target.value = '';
   };
 
-  // Group messages by day + streak position
+  // Grup mesajlarını gün + streak pozisyonuna göre ayır
   const grouped = [];
   let lastDay = null;
   let lastSenderId = null;
@@ -196,7 +181,6 @@ export default function ChatPage() {
     grouped.push({ type: 'msg', ...msg, isFirstInStreak, isLastInStreak });
   });
 
-  // Border radius: top-left, top-right, bottom-right, bottom-left
   const R = 18, r = 4;
   function bubbleRadius(isMine, isFirst, isLast) {
     if (isFirst && isLast) return `${R}px`;
@@ -218,13 +202,12 @@ export default function ChatPage() {
   );
 
   return (
-    <div className="page">
+    <div className="page" style={{ display: 'flex', flexDirection: 'column', height: '100dvh' }}>
       {/* Header */}
       <div className="chat-header">
         <button className="ig-icon-btn" onClick={() => navigate(-1)} style={{ marginLeft: -8 }}>
           <ArrowLeft size={22} />
         </button>
-
         <div className="chat-header-user" onClick={() => navigate(`/user/${partnerUid}`)}>
           {partner?.avatarUrl
             ? <img src={partner.avatarUrl} alt="" className="chat-header-avatar" />
@@ -240,65 +223,88 @@ export default function ChatPage() {
             <div className="chat-header-name">{partner?.username || 'Kullanıcı'}</div>
           </div>
         </div>
-
         <button className="ig-icon-btn">
           <Info size={22} />
         </button>
       </div>
 
       {/* Messages */}
-      <div className="chat-messages">
+      <div
+        className="chat-messages"
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          paddingBottom: imagePreview ? 140 : 80,
+        }}
+      >
         {grouped.map((item) => {
           if (item.type === 'day') {
             return <div key={item.key} className="chat-day-divider">{item.label}</div>;
           }
 
-          const isMine     = item.senderId === user.uid;
-          const showAvatar = !isMine && item.isFirstInStreak;
-          const radius     = bubbleRadius(isMine, item.isFirstInStreak, item.isLastInStreak);
+          const isMine        = item.senderId === user.uid;
+          const showAvatar    = !isMine && item.isFirstInStreak;
+          const radius        = bubbleRadius(isMine, item.isFirstInStreak, item.isLastInStreak);
+          const timeStr       = item.timestamp
+            ? new Date(item.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+            : '';
 
           return (
-            <div
-              key={item.id}
-              className={`chat-msg-row ${isMine ? 'chat-msg-row--mine' : ''}`}
-              style={{ marginBottom: item.isLastInStreak ? 8 : 2 }}
-            >
-              {/* Avatar slot */}
-              {!isMine && (
-                showAvatar
-                  ? partner?.avatarUrl
-                    ? <img src={partner.avatarUrl} alt="" className="chat-msg-avatar" />
-                    : <div className="chat-msg-avatar" style={{ background: 'var(--surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>
-                        {(partner?.username || '?').charAt(0).toUpperCase()}
-                      </div>
-                  : <div className="chat-msg-avatar" style={{ visibility: 'hidden' }} />
-              )}
+            <div key={item.id} style={{ display: 'flex', flexDirection: 'column' }}>
+              <div
+                className={`chat-msg-row ${isMine ? 'chat-msg-row--mine' : ''}`}
+                style={{ marginBottom: item.isLastInStreak ? 2 : 2 }}
+              >
+                {/* Avatar slot */}
+                {!isMine && (
+                  showAvatar
+                    ? partner?.avatarUrl
+                      ? <img src={partner.avatarUrl} alt="" className="chat-msg-avatar" />
+                      : <div className="chat-msg-avatar" style={{ background: 'var(--surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>
+                          {(partner?.username || '?').charAt(0).toUpperCase()}
+                        </div>
+                    : <div className="chat-msg-avatar" style={{ visibility: 'hidden' }} />
+                )}
 
-              {item.imageUrl ? (
-                <div className="chat-bubble-img" style={{ borderRadius: radius, overflow: 'hidden' }}>
-                  <img src={item.imageUrl} alt="" />
-                  {item.text && (
-                    <div
-                      className={`chat-bubble ${isMine ? 'chat-bubble--mine' : 'chat-bubble--theirs'}`}
-                      style={{ borderRadius: '0 0 18px 18px', borderTop: 'none' }}
-                    >
-                      {item.text}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div
-                  className={`chat-bubble ${isMine ? 'chat-bubble--mine' : 'chat-bubble--theirs'}`}
-                  style={{ borderRadius: radius }}
-                >
-                  {item.text}
+                {item.imageUrl ? (
+                  <div className="chat-bubble-img" style={{ borderRadius: radius, overflow: 'hidden' }}>
+                    <img src={item.imageUrl} alt="" />
+                    {item.text && (
+                      <div
+                        className={`chat-bubble ${isMine ? 'chat-bubble--mine' : 'chat-bubble--theirs'}`}
+                        style={{ borderRadius: '0 0 18px 18px', borderTop: 'none' }}
+                      >
+                        {item.text}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    className={`chat-bubble ${isMine ? 'chat-bubble--mine' : 'chat-bubble--theirs'}`}
+                    style={{ borderRadius: radius }}
+                  >
+                    {item.text}
+                  </div>
+                )}
+              </div>
+
+              {/* Sadece streak'in SON mesajına saat */}
+              {item.isLastInStreak && timeStr && (
+                <div style={{
+                  fontSize: 11,
+                  color: 'var(--text-3)',
+                  textAlign: isMine ? 'right' : 'left',
+                  padding: isMine ? '1px 6px 6px 0' : '1px 0 6px 46px',
+                  lineHeight: 1,
+                }}>
+                  {timeStr}
                 </div>
               )}
             </div>
           );
         })}
 
-        {/* Typing indicator */}
+        {/* Yazıyor göstergesi */}
         {partnerTyping && (
           <div className="chat-msg-row" style={{ marginBottom: 8, alignItems: 'flex-end' }}>
             {partner?.avatarUrl
@@ -329,14 +335,15 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Image preview */}
+      {/* Görsel önizleme */}
       {imagePreview && (
         <div style={{
-          position: 'fixed', bottom: 70, left: '50%', transform: 'translateX(-50%)',
-          maxWidth: 470, width: '100%', padding: '0 16px', zIndex: 200,
+          padding: '8px 16px',
+          background: 'var(--surface-1)',
+          borderTop: '1px solid var(--border)',
         }}>
           <div style={{ position: 'relative', display: 'inline-block' }}>
-            <img src={imagePreview.url} alt="" style={{ height: 80, borderRadius: 10, objectFit: 'cover' }} />
+            <img src={imagePreview.url} alt="" style={{ height: 72, borderRadius: 10, objectFit: 'cover' }} />
             <button
               onClick={() => setImagePreview(null)}
               style={{
@@ -352,8 +359,23 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* Input bar */}
-      <div className="chat-input-bar">
+      {/* Input bar — navbar'ın üstünde sabit */}
+      <div
+        className="chat-input-bar"
+        style={{
+          position: 'sticky',
+          bottom: 0,
+          zIndex: 100,
+          background: 'var(--surface-1)',
+          borderTop: '1px solid var(--border)',
+          padding: '8px 12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          /* Mobil klavye açıldığında taşmaması için */
+          paddingBottom: 'calc(8px + env(safe-area-inset-bottom))',
+        }}
+      >
         <button className="ig-icon-btn" onClick={() => fileRef.current?.click()} style={{ flexShrink: 0 }}>
           <ImagePlus size={22} />
         </button>
