@@ -1,6 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Play, Volume2, VolumeX } from 'lucide-react';
 
+const getCdnUrl = (url) => {
+  if (!url) return url;
+  return url.replace('https://firebasestorage.googleapis.com', 'https://sigal-cdn.abimer2350.workers.dev');
+};
+
 export default function MediaCarousel({ media = [], aspectRatio = 1, showIndicator = true, onDoubleTap }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [muted, setMuted] = useState(true);
@@ -101,11 +106,13 @@ export default function MediaCarousel({ media = [], aspectRatio = 1, showIndicat
             {item.type === 'video' ? (
               <div style={{ width: '100%', height: '100%', position: 'relative' }}>
                 <video
-                  src={item.url}
+                  src={getCdnUrl(item.url)}
                   loop
                   muted={muted}
                   playsInline
                   autoPlay={i === currentIndex}
+                  preload={i === currentIndex ? 'auto' : 'none'}
+                  poster={getCdnUrl(item.thumbnailUrl) || ""}
                   style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -128,7 +135,7 @@ export default function MediaCarousel({ media = [], aspectRatio = 1, showIndicat
               </div>
             ) : (
               <img
-                src={item.url}
+                src={getCdnUrl(item.url)}
                 alt=""
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 draggable={false}
