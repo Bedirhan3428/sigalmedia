@@ -6,6 +6,12 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../apiConfig';
 
+// ─── CDN Dönüştürücü Fonksiyon ────────────────────────────────────────────────
+const getCdnUrl = (url) => {
+  if (!url) return url;
+  return url.replace('https://firebasestorage.googleapis.com', 'https://sigal-cdn.abimer2350.workers.dev');
+};
+
 // ─── Yorum Paneli ─────────────────────────────────────────────────────────────
 function CommentPanel({ tweetId, deviceId, onClose }) {
   const [comments, setComments] = useState([]);
@@ -81,7 +87,7 @@ function CommentPanel({ tweetId, deviceId, onClose }) {
             <div key={c._id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
               <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#363636', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#F5F5F5' }}>
                 {c.authorAvatarUrl
-                  ? <img src={c.authorAvatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ? <img src={getCdnUrl(c.authorAvatarUrl)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : (c.authorAvatar?.charAt(0)?.toUpperCase() || '?')
                 }
               </div>
@@ -275,15 +281,16 @@ function ReelCard({ post, isActive, isAppVisible, isRendered, deviceId, likedTwe
           isVideo && post.imageUrl ? (
             <video
               ref={videoRef}
-              src={post.imageUrl}
+              src={getCdnUrl(post.imageUrl)}
               loop
               muted={muted}
               playsInline
-              preload={isActive ? 'auto' : 'metadata'}
+              preload={isActive ? 'auto' : (isRendered ? 'metadata' : 'none')}
+              poster={getCdnUrl(post.thumbnailUrl) || ""}
               style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#000' }}
             />
           ) : post.imageUrl ? (
-            <img src={post.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }} />
+            <img src={getCdnUrl(post.imageUrl)} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }} />
           ) : (
             <div style={{ width: '100%', height: '100%', background: `linear-gradient(160deg, hsl(${bgHue},40%,10%), hsl(${bgHue + 30},50%,16%))`, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
               <p style={{ color: '#fff', fontSize: 22, fontWeight: 600, lineHeight: 1.55, textAlign: 'center', maxWidth: 340 }}>{post.content}</p>
@@ -293,7 +300,7 @@ function ReelCard({ post, isActive, isAppVisible, isRendered, deviceId, likedTwe
           <div style={{ width: '100%', height: '100%', background: '#000' }} />
         )}
 
-        {/* Gradien gölgeler (Daha doğal görünüm için) */}
+        {/* Gradien gölgeler */}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 45%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 120, background: 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 100%)', pointerEvents: 'none' }} />
 
@@ -312,7 +319,7 @@ function ReelCard({ post, isActive, isAppVisible, isRendered, deviceId, likedTwe
 
       {/* ── Sağ sidebar (İkonlar) ─────────────────────────────────────────── */}
       <div style={{
-        position: 'absolute', right: 12, bottom: navbarH + 24, // Butonları aşağı iten yer
+        position: 'absolute', right: 12, bottom: navbarH + 24,
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22, zIndex: 10,
       }}>
         <div
@@ -320,7 +327,7 @@ function ReelCard({ post, isActive, isAppVisible, isRendered, deviceId, likedTwe
           style={{ width: 46, height: 46, borderRadius: '50%', border: '2px solid #fff', overflow: 'hidden', background: '#1C1C1C', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
         >
           {post.authorAvatarUrl
-            ? <img src={post.authorAvatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ? <img src={getCdnUrl(post.authorAvatarUrl)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18, color: '#fff' }}>{(post.authorAvatar || '?').charAt(0).toUpperCase()}</div>
           }
         </div>
@@ -382,7 +389,7 @@ function ReelCard({ post, isActive, isAppVisible, isRendered, deviceId, likedTwe
               setMuted(nm);
               if (videoRef.current) videoRef.current.muted = nm;
             }}
-            onTouchStart={(e) => e.stopPropagation()} // Dokunma eventlerini yalıtıyor (Çözüm)
+            onTouchStart={(e) => e.stopPropagation()} 
             onTouchEnd={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, WebkitTapHighlightColor: 'transparent', zIndex: 20 }}
@@ -499,7 +506,7 @@ export default function Reels() {
   return (
     <div style={{
       position: 'relative', 
-      height: 'calc(100dvh - 52px)', // Siyah Ekran Çözümü: Yükseklik Explicit (Belirgin) verildi
+      height: 'calc(100dvh - 52px)', 
       width: '100%',
       maxWidth: 470, margin: '0 auto',
       background: '#000', overflow: 'hidden',
@@ -530,7 +537,7 @@ export default function Reels() {
               key={post._id}
               data-reel-index={i}
               style={{
-                height: '100%', // %10'luk taşma sorununu (Taşmayı) engelleyen satır
+                height: '100%',
                 scrollSnapAlign: 'start',
                 scrollSnapStop: 'always',
               }}
@@ -550,5 +557,3 @@ export default function Reels() {
     </div>
   );
 }
-
-
