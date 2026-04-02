@@ -226,6 +226,9 @@ export default function Profile() {
   const [isFollowing,  setIsFollowing]  = useState(false);
   const [cropSrc,      setCropSrc]      = useState(null);
   const [uploadingAvatar, setUpAvatar]  = useState(false);
+  
+  // Seçilen gönderinin indeksi
+  const [selectedPostIndex, setSelectedPostIndex] = useState(null);
 
   const displayProfile = isOwn ? (myProfile || profile) : profile;
   const p              = displayProfile;
@@ -496,7 +499,7 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* ── GÖNDERİLER ──────────────────────────────────────────────────────── */}
+      {/* ── GÖNDERİLER (YENİ IZGARA / KAYDIRILABİLİR GÖRÜNÜM VE VİDEO DÜZELTMESİ) ───────────────── */}
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {currentTabPosts.length === 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 24px', gap: 12, textAlign: 'center' }}>
@@ -507,24 +510,68 @@ export default function Profile() {
             {isOwn && tab !== 'saved' && <p style={{ fontSize: 14, color: '#737373', margin: 0 }}>İlk gönderini paylaş!</p>}
             {tab === 'saved' && <p style={{ fontSize: 14, color: '#737373', margin: 0 }}>Kaydettiğin gönderiler burada görünür.</p>}
           </div>
+        ) : selectedPostIndex === null ? (
+          // IZGARA GÖRÜNÜMÜ
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2px', paddingBottom: '60px' }}>
+              {currentTabPosts.map((post, index) => (
+                  <div 
+                      key={post._id} 
+                      onClick={() => setSelectedPostIndex(index)}
+                      style={{ aspectRatio: '1', background: '#262626', cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
+                  >
+                      {post.imageUrl ? (
+                          <img 
+                              src={post.imageUrl} 
+                              alt="Gönderi" 
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                          />
+                      ) : post.videoUrl ? (
+                          <video 
+                              src={`${post.videoUrl}#t=0.1`} 
+                              style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} 
+                              muted 
+                              playsInline 
+                          />
+                      ) : (
+                          <div style={{ padding: '8px', fontSize: '10px', color: '#a1a1aa', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', textAlign: 'center', wordBreak: 'break-word' }}>
+                              {post.content?.slice(0, 45)}{post.content?.length > 45 ? '...' : ''}
+                          </div>
+                      )}
+                  </div>
+              ))}
+          </div>
         ) : (
-          currentTabPosts.map(post => (
-            <PostCard
-              key={post._id}
-              post={post}
-              deviceId={currentUser?.uid}
-              likedTweetIds={[]}
-              likedCommentIds={[]}
-              followingIds={[]}
-              savedTweetIds={savedIds}
-              onDelete={() => setPosts(prev => prev.filter(p => p._id !== post._id))}
-              onSaveChange={(id, isSaved) => {
-                setSavedIds(prev => isSaved ? [...prev, id] : prev.filter(x => x !== id));
-                if (isSaved) setSavedPosts(prev => [post, ...prev]);
-                else setSavedPosts(prev => prev.filter(p => p._id !== id));
-              }}
-            />
-          ))
+          // TAM EKRAN KAYDIRILABİLİR AKIŞ GÖRÜNÜMÜ
+          <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: '#000', overflowY: 'auto' }}>
+              <div style={{ position: 'sticky', top: 0, zIndex: 1001, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #262626' }}>
+                  <button 
+                      onClick={() => setSelectedPostIndex(null)} 
+                      style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  >
+                      <ArrowLeft size={24} />
+                  </button>
+                  <span style={{ color: '#fff', marginLeft: '16px', fontWeight: 'bold', fontSize: '16px' }}>Gönderiler</span>
+              </div>
+              <div style={{ paddingBottom: '80px' }}>
+                  {currentTabPosts.slice(selectedPostIndex).map(post => (
+                      <PostCard
+                        key={post._id}
+                        post={post}
+                        deviceId={currentUser?.uid}
+                        likedTweetIds={[]}
+                        likedCommentIds={[]}
+                        followingIds={[]}
+                        savedTweetIds={savedIds}
+                        onDelete={() => setPosts(prev => prev.filter(p => p._id !== post._id))}
+                        onSaveChange={(id, isSaved) => {
+                          setSavedIds(prev => isSaved ? [...prev, id] : prev.filter(x => x !== id));
+                          if (isSaved) setSavedPosts(prev => [post, ...prev]);
+                          else setSavedPosts(prev => prev.filter(p => p._id !== id));
+                        }}
+                      />
+                  ))}
+              </div>
+          </div>
         )}
       </div>
     </div>

@@ -37,8 +37,13 @@ export default function Navbar() {
                 openShare();
                 return;
               }
-              if (isActive) window.location.reload();
-              else navigate(tab.path);
+              
+              // DÜZELTME: Sayfayı yenilemek (reload) yerine, en üste kaydırıyoruz
+              if (isActive) {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              } else {
+                navigate(tab.path);
+              }
             }}
             className={`nav-tab ${isActive ? 'nav-tab--active' : ''}`}
             aria-label={tab.label}
