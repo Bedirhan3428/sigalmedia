@@ -6,7 +6,7 @@ import {
     ChevronRight, Clock, Loader2, Crown, RotateCcw,
     List, PauseCircle, Bot, Plus, MessageSquare, Twitter,
     Calendar, GraduationCap, Star, Sparkles, PartyPopper,
-    Power, PowerOff, ToggleLeft, ToggleRight
+    Power, PowerOff, ToggleLeft, ToggleRight, Link
 } from 'lucide-react';
 import { API_URL } from '../apiConfig';
 import { useAuth } from '../context/AuthContext';
@@ -220,6 +220,17 @@ function QuarantineRow({ tweet, user, onAction }) {
                         {tweet.content.slice(0, 300)}{tweet.content.length > 300 ? '…' : ''}
                     </p>
                 )}
+                {/* ── YENİ: Görsel önizleme ── */}
+                {tweet.imageUrl && (
+                    <img
+                        src={tweet.imageUrl}
+                        alt="Tweet Medyası"
+                        style={{
+                            width: '100%', maxHeight: '180px', objectFit: 'cover',
+                            borderRadius: '8px', border: `1px solid ${isSuspended ? '#3b1d1d' : '#27272a'}`,
+                        }}
+                    />
+                )}
                 {lastLog && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         <AuditScoreBar score={lastLog.score || 0} />
@@ -288,6 +299,18 @@ function AllTweetRow({ tweet, user, onDeleted }) {
                         ? <p style={{ fontSize: '12px', color: '#71717a', margin: 0, wordBreak: 'break-word' }}>{tweet.content.slice(0, 200)}{tweet.content.length > 200 ? '…' : ''}</p>
                         : <p style={{ fontSize: '11px', color: '#3f3f46', margin: 0, fontStyle: 'italic' }}>(Görsel tweet)</p>
                     }
+                    {/* ── YENİ: Görsel önizleme ── */}
+                    {tweet.imageUrl && (
+                        <img
+                            src={tweet.imageUrl}
+                            alt="Tweet Medyası"
+                            style={{
+                                width: '80px', height: '80px', objectFit: 'cover',
+                                borderRadius: '8px', marginTop: '8px', border: '1px solid #27272a',
+                                display: 'block',
+                            }}
+                        />
+                    )}
                 </div>
                 {tweet.aegisStatus !== 'removed' && (
                     <button onClick={() => setShowDeleteDlg(true)} disabled={loading} style={{ background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)', borderRadius: '7px', padding: '6px', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -446,7 +469,6 @@ function BotExamplesTab({ user }) {
 
     return (
         <div>
-            {/* İstatistik */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '14px' }}>
                 <div style={{ background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '10px', padding: '10px 12px' }}>
                     <p style={{ fontSize: '18px', fontWeight: 800, color: '#818cf8', margin: 0 }}>{tweetCount}</p>
@@ -458,14 +480,12 @@ function BotExamplesTab({ user }) {
                 </div>
             </div>
 
-            {/* Açıklama */}
             <div style={{ background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.12)', borderRadius: '10px', padding: '10px 14px', marginBottom: '14px' }}>
                 <p style={{ fontSize: '12px', color: '#71717a', margin: 0, lineHeight: 1.6 }}>
                     🤖 <strong style={{ color: '#818cf8' }}>Bot Sistemi:</strong> Her 15 dakikada bir bot hesabı rastgele tweet atar, yorum yapar veya beğeni bırakır. Bu örnekler, YZ'nin içerik üretirken ilham alacağı şablonlardır. Günde 1 yeni bot hesabı otomatik oluşturulur.
                 </p>
             </div>
 
-            {/* Filtreler + Ekle butonu */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
                 {['all', 'tweet', 'comment'].map(t => (
                     <button key={t} onClick={() => setFilterType(t)} style={{
@@ -490,7 +510,6 @@ function BotExamplesTab({ user }) {
                 </button>
             </div>
 
-            {/* Yeni Örnek Formu */}
             {showAddForm && (
                 <div style={{ background: '#0d0d10', border: '1px solid #27272a', borderRadius: '12px', padding: '14px', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <p style={{ fontSize: '13px', fontWeight: 700, color: '#e4e4e7', margin: 0 }}>Yeni Bot Örneği</p>
@@ -534,7 +553,6 @@ function BotExamplesTab({ user }) {
                 </div>
             )}
 
-            {/* Liste */}
             {loading ? (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px', gap: '10px', color: '#52525b' }}>
                     <Loader2 size={16} className="spin" />
@@ -613,7 +631,6 @@ function BotsManagementTab({ user }) {
 
     return (
         <div>
-            {/* İstatistik */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '14px' }}>
                 <div style={{ background: 'rgba(52,211,153,0.07)', border: '1px solid rgba(52,211,153,0.2)', borderRadius: '10px', padding: '10px 12px' }}>
                     <p style={{ fontSize: '20px', fontWeight: 800, color: '#34d399', margin: 0 }}>{activeCount}</p>
@@ -625,7 +642,6 @@ function BotsManagementTab({ user }) {
                 </div>
             </div>
 
-            {/* Toplu aksiyon butonları */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
                 <button
                     onClick={() => handleDisableAll(true)}
@@ -686,7 +702,6 @@ function BotsManagementTab({ user }) {
                                 opacity: bot.isActive ? 1 : 0.55,
                                 transition: 'opacity 0.25s, border-color 0.25s',
                             }}>
-                                {/* Avatar */}
                                 <div style={{
                                     width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
                                     background: bot.isActive ? 'rgba(167,139,250,0.15)' : '#18181b',
@@ -698,7 +713,6 @@ function BotsManagementTab({ user }) {
                                     {bot.avatar?.charAt(0)?.toUpperCase() || '🤖'}
                                 </div>
 
-                                {/* Bilgi */}
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <span style={{ fontSize: '13px', fontWeight: 700, color: '#e4e4e7' }}>{bot.username || 'bot'}</span>
@@ -717,7 +731,6 @@ function BotsManagementTab({ user }) {
                                     </p>
                                 </div>
 
-                                {/* Toggle butonu */}
                                 <button
                                     onClick={() => handleToggle(bot._id, bot.isActive)}
                                     disabled={isToggling}
@@ -827,14 +840,12 @@ function BotEventsTab({ user }) {
 
     return (
         <div>
-            {/* Açıklama */}
             <div style={{ background: 'rgba(251,191,36,0.05)', border: '1px solid rgba(251,191,36,0.15)', borderRadius: '10px', padding: '10px 14px', marginBottom: '14px' }}>
                 <p style={{ fontSize: '12px', color: '#71717a', margin: 0, lineHeight: 1.6 }}>
                     📅 <strong style={{ color: '#fbbf24' }}>Etkinlik Takvimi:</strong> Botlar sadece buraya girilen etkinlikleri kullanır. Uydurma tarih, not veya sınav puanı <strong style={{ color: '#f43f5e' }}>yazmaz</strong>. Etkinlik yoksa günlük hayat tarzında içerik üretir.
                 </p>
             </div>
 
-            {/* Toolbar */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
                 <button onClick={() => setShowPast(v => !v)} style={{ padding: '5px 12px', borderRadius: '999px', cursor: 'pointer', fontSize: '11px', fontWeight: 600, background: showPast ? 'rgba(82,82,91,0.2)' : 'transparent', border: showPast ? '1px solid #3f3f46' : '1px solid #27272a', color: showPast ? '#a1a1aa' : '#52525b' }}>
                     {showPast ? '📂 Geçmişler dahil' : '📅 Sadece gelecek'}
@@ -844,12 +855,10 @@ function BotEventsTab({ user }) {
                 </button>
             </div>
 
-            {/* Yeni Etkinlik Formu */}
             {showAddForm && (
                 <div style={{ background: '#0d0d10', border: '1px solid #27272a', borderRadius: '12px', padding: '14px', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <p style={{ fontSize: '13px', fontWeight: 700, color: '#e4e4e7', margin: 0 }}>Yeni Etkinlik</p>
 
-                    {/* Tür seçimi */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                         {Object.entries(EVENT_TYPE_META).map(([key, meta]) => {
                             const Icon = meta.icon;
@@ -893,7 +902,6 @@ function BotEventsTab({ user }) {
                 </div>
             )}
 
-            {/* Etkinlik Listesi */}
             {loading ? (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px', gap: '10px', color: '#52525b' }}>
                     <Loader2 size={16} className="spin" /><span style={{ fontSize: '13px' }}>Yükleniyor...</span>
@@ -952,6 +960,12 @@ export default function AdminDashboard() {
     const [allPage,      setAllPage]      = useState(1);
     const [allTotal,     setAllTotal]     = useState(0);
     const [unauthorized, setUnauthorized] = useState(false);
+
+    // ── YENİ: Link ile silme state'leri ──
+    const [deleteLink,        setDeleteLink]        = useState('');
+    const [deleteLinkLoading, setDeleteLinkLoading] = useState(false);
+    const [deleteLinkError,   setDeleteLinkError]   = useState('');
+    const [deleteLinkSuccess, setDeleteLinkSuccess] = useState('');
 
     const fetchStats = useCallback(async () => {
         if (!user) return;
@@ -1019,6 +1033,51 @@ export default function AdminDashboard() {
         fetchStats();
     };
 
+    // ── YENİ: Link ile silme handler'ı ──
+    const handleDeleteByLink = async () => {
+        setDeleteLinkError('');
+        setDeleteLinkSuccess('');
+        const raw = deleteLink.trim();
+        if (!raw) return;
+
+        // URL'den ya da düz ID olarak al
+        const tweetId = raw.includes('/post/')
+            ? raw.split('/post/').pop().split('?')[0].trim()
+            : raw;
+
+        if (!tweetId) {
+            setDeleteLinkError('Geçerli bir link veya ID girin.');
+            return;
+        }
+
+        if (!window.confirm(`"${tweetId}" ID'li tweet kalıcı olarak silinecek. Emin misin?`)) return;
+
+        setDeleteLinkLoading(true);
+        try {
+            const headers = await adminHeaders(user);
+            const res = await fetch(`${API_URL}/api/admin/tweet/${tweetId}`, {
+                method: 'DELETE',
+                headers,
+                body: JSON.stringify({ reason: 'Admin tarafından link ile silindi.' }),
+            });
+            if (res.ok) {
+                setDeleteLinkSuccess('Tweet başarıyla silindi.');
+                setDeleteLink('');
+                // Mevcut listeyi de güncelle
+                setAllTweets(prev => prev.map(t => t._id === tweetId ? { ...t, aegisStatus: 'removed' } : t));
+                setQuarantine(prev => prev.filter(t => t._id !== tweetId));
+                fetchStats();
+            } else {
+                const data = await res.json().catch(() => ({}));
+                setDeleteLinkError(data.error || 'Tweet bulunamadı veya silinemedi.');
+            }
+        } catch {
+            setDeleteLinkError('Bağlantı hatası.');
+        } finally {
+            setDeleteLinkLoading(false);
+        }
+    };
+
     const TABS = [
         { id: 'quarantine', label: 'Quarantine',  icon: ShieldAlert, badge: (stats?.tweets?.quarantine || 0) + (stats?.tweets?.suspended || 0) },
         { id: 'all',        label: 'All Tweets',  icon: List,        badge: 0 },
@@ -1074,6 +1133,62 @@ export default function AdminDashboard() {
                         <ShieldOff size={16} /> {error}
                     </div>
                 )}
+
+                {/* ── YENİ: Link ile tweet silme kutusu ── */}
+                <div style={{
+                    background: '#0d0d10', border: '1px solid #27272a',
+                    borderRadius: '12px', padding: '14px', marginBottom: '20px',
+                    display: 'flex', flexDirection: 'column', gap: '10px',
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                        <Link size={14} color="#f43f5e" />
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#e4e4e7' }}>Link ile Tweet Sil</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <input
+                            type="text"
+                            placeholder="Tweet linkini veya ID'sini yapıştır..."
+                            value={deleteLink}
+                            onChange={e => { setDeleteLink(e.target.value); setDeleteLinkError(''); setDeleteLinkSuccess(''); }}
+                            onKeyDown={e => e.key === 'Enter' && handleDeleteByLink()}
+                            style={{
+                                flex: 1, background: '#18181b', border: '1px solid #27272a',
+                                borderRadius: '8px', color: '#e4e4e7', fontSize: '13px',
+                                padding: '9px 12px', outline: 'none', fontFamily: "'Outfit', sans-serif",
+                                minWidth: 0,
+                            }}
+                        />
+                        <button
+                            onClick={handleDeleteByLink}
+                            disabled={!deleteLink.trim() || deleteLinkLoading}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: '5px',
+                                padding: '9px 16px', borderRadius: '8px', flexShrink: 0,
+                                cursor: !deleteLink.trim() || deleteLinkLoading ? 'not-allowed' : 'pointer',
+                                background: 'rgba(244,63,94,0.12)', border: '1px solid rgba(244,63,94,0.35)',
+                                color: '#fb7185', fontSize: '12px', fontWeight: 700,
+                                opacity: !deleteLink.trim() || deleteLinkLoading ? 0.5 : 1,
+                                transition: 'opacity 0.2s',
+                            }}
+                        >
+                            {deleteLinkLoading
+                                ? <Loader2 size={13} className="spin" />
+                                : <Trash2 size={13} />
+                            }
+                            Sil
+                        </button>
+                    </div>
+                    {deleteLinkError && (
+                        <p style={{ fontSize: '11px', color: '#f43f5e', margin: 0, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <XCircle size={12} /> {deleteLinkError}
+                        </p>
+                    )}
+                    {deleteLinkSuccess && (
+                        <p style={{ fontSize: '11px', color: '#34d399', margin: 0, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <CheckCircle size={12} /> {deleteLinkSuccess}
+                        </p>
+                    )}
+                </div>
 
                 {stats && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '20px' }}>
