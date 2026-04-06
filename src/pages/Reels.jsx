@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   Heart, MessageCircle, Send, Volume2, VolumeX, Play, X, Loader2,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../apiConfig';
+import useAnalytics from '../hooks/useAnalytics';
 
 // ─── Yorum Paneli ─────────────────────────────────────────────────────────────
 function CommentPanel({ tweetId, deviceId, onClose }) {
@@ -53,12 +54,12 @@ function CommentPanel({ tweetId, deviceId, onClose }) {
 
   return (
     <>
-      <div style={{ position: 'absolute', inset: 0, zIndex: 50 }} onClick={onClose} />
+      <div style={{ position: 'absolute', inset: 0, zIndex: 2500 }} onClick={onClose} />
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0, height: '55%',
         background: '#1C1C1C', borderRadius: '16px 16px 0 0',
         border: '1px solid #262626', borderBottom: 'none',
-        display: 'flex', flexDirection: 'column', zIndex: 51,
+        display: 'flex', flexDirection: 'column', zIndex: 2501,
         overflow: 'hidden', paddingBottom: 'env(safe-area-inset-bottom)',
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, background: '#363636', margin: '12px auto 4px', flexShrink: 0 }} />
@@ -146,11 +147,20 @@ function HeartBurst({ x, y, onDone }) {
 }
 
 // ─── Tek Reel Kartı (REACT.MEMO İLE OPTİMİZE EDİLDİ) ──────────────────────────
-const ReelCard = React.memo(function ReelCard({ post, isActive, isAppVisible, isRendered, deviceId, likedTweetIds }) {
+const ReelCard = React.memo(function ReelCard({ post, isActive, isAppVisible, isRendered, deviceId, likedTweetIds, startTime = 0 }) {
   const navigate = useNavigate();
   const videoRef = useRef(null);
+  const timeSynced = useRef(false);
   const tapTimer = useRef(null);
   const lastTap = useRef(0);
+  
+  // Sync start time once
+  useEffect(() => {
+    if (isActive && startTime > 0 && videoRef.current && !timeSynced.current) {
+        videoRef.current.currentTime = startTime;
+        timeSynced.current = true;
+    }
+  }, [isActive, startTime]);
 
   const initLiked = likedTweetIds.includes(post._id?.toString());
   const [liked, setLiked] = useState(initLiked);
@@ -162,6 +172,7 @@ const ReelCard = React.memo(function ReelCard({ post, isActive, isAppVisible, is
 
   const isVideo = post.mediaType === 'video' || post.imageUrl?.includes('/o/videos');
 
+  const { trackEvent } = useAnalytics();
   const isActiveRef = useRef(isActive);
   const isAppVisibleRef = useRef(isAppVisible);
   const pausedRef = useRef(paused);
@@ -210,6 +221,38 @@ const ReelCard = React.memo(function ReelCard({ post, isActive, isAppVisible, is
     }
   }, [isActive, isAppVisible, paused]);
 
+  // ─── Analytics: Video İzleme Süresi (reel_watch) ───────────────────────────
+  const viewStartTime = useRef(null);
+  useEffect(() => {
+    if (isActive && isAppVisible && !paused) {
+      viewStartTime.current = Date.now();
+    } else {
+      if (viewStartTime.current) {
+        const duration = (Date.now() - viewStartTime.current) / 1000;
+        if (duration > 1) { // 1 saniyeden uzun izlendiyse kaydet
+          let percentage = 0;
+          if (isVideo && videoRef.current && videoRef.current.duration > 0) {
+            percentage = Math.round((videoRef.current.currentTime / videoRef.current.duration) * 100);
+          }
+          trackEvent(isVideo ? 'reel_watch' : 'view', post._id, 'reel', { duration, percentage, source: 'reels' });
+        }
+        viewStartTime.current = null;
+      }
+    }
+  }, [isActive, isAppVisible, paused, isVideo, post._id, trackEvent]);
+
+  // Sayfa değişiminde de kalan süreyi kaydet
+  useEffect(() => {
+    return () => {
+      if (viewStartTime.current) {
+        const duration = (Date.now() - viewStartTime.current) / 1000;
+        if (duration > 1) {
+          trackEvent(isVideo ? 'reel_watch' : 'view', post._id, 'reel', { duration, source: 'reels' });
+        }
+      }
+    };
+  }, [isVideo, post._id, trackEvent]);
+
   const togglePlay = () => {
     setPaused(prev => !prev);
   };
@@ -220,6 +263,7 @@ const ReelCard = React.memo(function ReelCard({ post, isActive, isAppVisible, is
     if (!liked && deviceId) {
       setLiked(true);
       setLikes(l => l + 1);
+      trackEvent('like', post._id, 'reel');
       fetch(`${API_URL}/api/like/${post._id}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId }),
@@ -333,6 +377,7 @@ const ReelCard = React.memo(function ReelCard({ post, isActive, isAppVisible, is
               const next = !liked;
               setLiked(next);
               setLikes(l => next ? l + 1 : Math.max(0, l - 1));
+              trackEvent(next ? 'like' : 'unlike', post._id, 'reel');
               try {
                 await fetch(`${API_URL}/api/like/${post._id}`, {
                   method: next ? 'POST' : 'DELETE',
@@ -353,7 +398,11 @@ const ReelCard = React.memo(function ReelCard({ post, isActive, isAppVisible, is
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-          <button onClick={(e) => { e.stopPropagation(); setShowComments(true); }}
+          <button onClick={(e) => { 
+            e.stopPropagation(); 
+            trackEvent('comment', post._id, 'reel');
+            setShowComments(true); 
+          }}
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, WebkitTapHighlightColor: 'transparent' }}>
             <MessageCircle size={30} color="#fff" strokeWidth={1.8} style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />
           </button>
@@ -365,6 +414,7 @@ const ReelCard = React.memo(function ReelCard({ post, isActive, isAppVisible, is
         <button
           onClick={(e) => {
             e.stopPropagation();
+            trackEvent('share', post._id, 'reel');
             const url = `https://sigalmedia.site/post-detail?id=${post._id}`;
             navigator.share?.({ url }).catch(() => navigator.clipboard?.writeText(url));
           }}
@@ -434,6 +484,11 @@ export default function Reels() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [fetchingMore, setFetchingMore] = useState(false);
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const reelIdParam = searchParams.get('id');
+  const initialPost = location.state?.initialPost;
+  const startTime = location.state?.startTime || 0;
   const scrollRef = useRef(null);
 
   const [isAppVisible, setIsAppVisible] = useState(!document.hidden);
@@ -453,11 +508,39 @@ export default function Reels() {
         ? fetch(`${API_URL}/api/liked-ids/${user.uid}`).then(r => r.json())
         : Promise.resolve({ tweetIds: [] }),
     ]).then(([feedData, likeData]) => {
-      setPosts(Array.isArray(feedData) ? feedData : []);
+      let allPosts = Array.isArray(feedData) ? feedData : [];
+      
+      // If we have an initialPost from Feed, ensure it's at the top if target
+      if (initialPost && reelIdParam && initialPost._id === reelIdParam) {
+          const index = allPosts.findIndex(p => p._id === initialPost._id);
+          if (index !== -1) {
+              // Move existing to top
+              const item = allPosts.splice(index, 1)[0];
+              allPosts.unshift(item);
+          } else {
+              // Prepend it
+              allPosts.unshift(initialPost);
+          }
+      }
+
+      setPosts(allPosts);
       setLikedIds(likeData.tweetIds || []);
       setLoading(false);
+
+      if (reelIdParam && allPosts.length > 0) {
+        const targetIndex = allPosts.findIndex(p => p._id.toString() === reelIdParam.toString());
+        if (targetIndex !== -1) {
+            setActiveIndex(targetIndex);
+            setTimeout(() => {
+                if (scrollRef.current) {
+                    const reelHeight = scrollRef.current.clientHeight;
+                    scrollRef.current.scrollTop = targetIndex * reelHeight;
+                }
+            }, 100);
+        }
+      }
     }).catch(() => setLoading(false));
-  }, [user?.uid]);
+  }, [user?.uid, reelIdParam, initialPost]);
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -542,6 +625,7 @@ export default function Reels() {
                 isRendered={i >= activeIndex - 1 && i <= activeIndex + 2}
                 deviceId={user?.uid}
                 likedTweetIds={likedIds}
+                startTime={post._id === reelIdParam ? startTime : 0}
               />
             </div>
           ))}

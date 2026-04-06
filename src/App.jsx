@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext';
 import { ProfileProvider } from './hooks/useProfile.jsx';
 import { UIProvider } from './context/UIContext';
+import { StoryProvider } from './context/StoryContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import { Login, Register } from './pages/Auth';
 import Feed       from './pages/Feed';
@@ -27,9 +28,11 @@ function Wrap({ children }) {
   return (
     <AuthProvider>
       <ProfileProvider>
-        <UIProvider>
-          {children}
-        </UIProvider>
+        <StoryProvider>
+          <UIProvider>
+            {children}
+          </UIProvider>
+        </StoryProvider>
       </ProfileProvider>
     </AuthProvider>
   );

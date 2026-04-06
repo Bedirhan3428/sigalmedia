@@ -2,18 +2,29 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Plus, ImagePlus, Video, Loader2, Camera, Play } from 'lucide-react';
 import { ref as storageRef, uploadBytes, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { useAuth } from '../context/AuthContext';
+import { useStories } from '../context/StoryContext';
 import { useProfile } from '../hooks/useProfile.jsx';
 import { storage } from '../firebase';
+import { Trash2 } from 'lucide-react';
 import { compressImage, compressVideo } from '../utils/mediaCompressor';
 import { API_URL } from '../apiConfig';
 
 // ─── Story Viewer (resim + video desteği) ─────────────────────────────────────
-function StoryViewer({ story, onClose }) {
+function StoryViewer({ story, onClose, isOwn, onDelete, onView }) {
   const [progress, setProgress] = useState(0);
   const timerRef = useRef(null);
   const videoRef = useRef(null);
+  const viewedRef = useRef(false);
 
   const isVideo = story.mediaType === 'video' || story.imageUrl?.includes('/o/videos');
+
+  useEffect(() => {
+    // 2 saniye sonra veya video bitince 'viewed' olarak işaretle
+    if (!viewedRef.current) {
+        onView?.(story._id);
+        viewedRef.current = true;
+    }
+  }, [story._id, onView]);
 
   useEffect(() => {
     setProgress(0);
@@ -78,6 +89,15 @@ function StoryViewer({ story, onClose }) {
         </div>
         <span style={{ flex: 1, fontWeight: 600, fontSize: 14, color: '#fff' }}>{story.username}</span>
         <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>{timeAgo(story.createdAt)}</span>
+        
+        {isOwn && (
+          <button 
+            onClick={(e) => { e.stopPropagation(); if (window.confirm('Hikayeyi silmek istediğine emin misin?')) onDelete?.(story._id); }}
+            style={{ background: 'rgba(255,48,64,0.1)', border: 'none', color: '#FF3040', cursor: 'pointer', padding: 8, borderRadius: '50%', display: 'flex', alignItems: 'center' }}>
+            <Trash2 size={18} />
+          </button>
+        )}
+
         <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 6 }}>
           <X size={22} />
         </button>
@@ -230,7 +250,13 @@ function StoryCreateModal({ onClose, onSuccess }) {
         }),
       });
 
-      if (res.ok) { onSuccess?.(); onClose(); }
+      if (res.ok) { 
+        onSuccess?.(); 
+        onClose(); 
+      } else {
+        const errorData = await res.json();
+        alert('Hikaye paylaşılamadı: ' + (errorData.error || 'Sunucu hatası!'));
+      }
     } catch (err) {
       alert('Hikaye paylaşılamadı: ' + err.message);
     } finally { setUploading(false); }
@@ -324,76 +350,20 @@ function StoryCreateModal({ onClose, onSuccess }) {
 
 // ─── Ana StoriesBar ───────────────────────────────────────────────────────────
 export default function StoriesBar() {
-  const user        = useAuth();
-  const { profile } = useProfile();
-
-  // Stories = mediaType='story' olan tweetler
-  const [stories,     setStories]     = useState([]);
-  const [myStory,     setMyStory]     = useState(null);
-  const [viewing,     setViewing]     = useState(null);
+  const user            = useAuth();
+  const { profile }     = useProfile();
+  const { stories, myStory, loading, fetchStories, viewStory, deleteStory, getStoryStatus } = useStories();
   const [showCreate,  setShowCreate]  = useState(false);
-  const [loading,     setLoading]     = useState(true);
+  const [viewing,     setViewing]     = useState(null);
 
-  const fetchStories = async () => {
-    if (!user?.uid) return;
-    setLoading(true);
-    try {
-      // Takip ettiklerinin son 24 saat içindeki story tweetleri
-      const [followData] = await Promise.all([
-        fetch(`${API_URL}/api/following-ids/${user.uid}`).then(r => r.json()),
-      ]);
-
-      const followingIds = followData.followingIds || [];
-      if (!followingIds.length) { setLoading(false); return; }
-
-      // Her kullanıcının son story'sini çek
-      const results = await Promise.all(
-        followingIds.slice(0, 20).map(uid =>
-          fetch(`${API_URL}/api/my-tweets/${uid}`)
-            .then(r => r.json())
-            .then(tweets => {
-              if (!Array.isArray(tweets)) return null;
-              const since    = Date.now() - 24 * 60 * 60 * 1000;
-              const stories  = tweets.filter(t =>
-                t.mediaType === 'story' && new Date(t.createdAt) > since
-              );
-              return stories.length ? stories[0] : null;
-            })
-            .catch(() => null)
-        )
-      );
-
-      // Profil bilgisi ekle
-      const withProfile = await Promise.all(
-        results.filter(Boolean).map(async (story) => {
-          try {
-            const res  = await fetch(`${API_URL}/api/public-user/${story.authorId}`);
-            const data = await res.json();
-            return {
-              ...story,
-              username:  data.username || story.authorAvatar,
-              avatarUrl: data.avatarUrl || story.authorAvatarUrl || null,
-            };
-          } catch {
-            return { ...story, username: story.authorAvatar, avatarUrl: story.authorAvatarUrl };
-          }
-        })
-      );
-
-      setStories(withProfile);
-
-      // Kendi story'si var mı?
-      const myTweets = await fetch(`${API_URL}/api/my-tweets/${user.uid}`).then(r => r.json());
-      if (Array.isArray(myTweets)) {
-        const since   = Date.now() - 24 * 60 * 60 * 1000;
-        const myLatest = myTweets.find(t => t.mediaType === 'story' && new Date(t.createdAt) > since);
-        setMyStory(myLatest || null);
-      }
-    } catch {}
-    finally { setLoading(false); }
+  const handleView = (sid) => {
+    viewStory(sid);
   };
 
-  useEffect(() => { fetchStories(); }, [user?.uid]);
+  const handleDelete = async (sid) => {
+    const success = await deleteStory(sid);
+    if (success) setViewing(null);
+  };
 
   // Görüntülenecek story yok ve takip yok ise stories bar'ı gizle
   if (!loading && stories.length === 0 && !myStory && !profile) return null;
@@ -410,6 +380,9 @@ export default function StoriesBar() {
       {viewing && (
         <StoryViewer
           story={viewing}
+          isOwn={viewing.authorId === user?.uid}
+          onDelete={handleDelete}
+          onView={handleView}
           onClose={() => setViewing(null)}
         />
       )}
@@ -429,7 +402,7 @@ export default function StoriesBar() {
           <div style={{
             width: 62, height: 62, borderRadius: '50%',
             background: myStory
-              ? 'linear-gradient(45deg,#FCAF45,#E1306C,#833AB4)'
+              ? (getStoryStatus(user.uid) === 'viewed' ? '#363636' : 'linear-gradient(45deg,#FCAF45,#E1306C,#833AB4)')
               : 'transparent',
             border: myStory ? 'none' : '1.5px dashed #737373',
             padding: myStory ? 2.5 : 0,
@@ -454,23 +427,34 @@ export default function StoriesBar() {
         </div>
 
         {/* Takip edilen story'ler */}
-        {stories.map(story => (
-          <div key={story._id}
-               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, cursor: 'pointer', padding: '2px 8px', minWidth: 72, flexShrink: 0 }}
-               onClick={() => setViewing(story)}>
-            <div style={{ width: 62, height: 62, borderRadius: '50%', background: 'linear-gradient(45deg,#FCAF45,#E1306C,#833AB4)', padding: 2.5 }}>
-              <div style={{ width: '100%', height: '100%', borderRadius: '50%', border: '2.5px solid #000', overflow: 'hidden', background: '#1C1C1C', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {story.avatarUrl
-                  ? <img src={story.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <span style={{ fontSize: 20, fontWeight: 700, color: '#F5F5F5' }}>{(story.username || '?').charAt(0).toUpperCase()}</span>
-                }
+        {stories.map(story => {
+          const status = getStoryStatus(story.authorId);
+          return (
+            <div key={story._id}
+                 style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, cursor: 'pointer', padding: '2px 8px', minWidth: 72, flexShrink: 0 }}
+                 onClick={() => {
+                   // Ekran açılırken profil bilgisini ekle (önceden Stories.jsx içindeki profil fetchingini StoryContext yapmıyor henüz, basitlik için story objesi üzerinden gidiyoruz)
+                   // Not: StoryContext şu an sadece Tweet datasını çekiyor. Profil datası Story components içinde birleştirilebilir.
+                   setViewing({ ...story, username: story.username || story.authorAvatar, avatarUrl: story.avatarUrl || story.authorAvatarUrl });
+                 }}>
+              <div style={{ 
+                width: 62, height: 62, borderRadius: '50%', 
+                background: status === 'viewed' ? '#363636' : 'linear-gradient(45deg,#FCAF45,#E1306C,#833AB4)', 
+                padding: 2.5 
+              }}>
+                <div style={{ width: '100%', height: '100%', borderRadius: '50%', border: '2.5px solid #000', overflow: 'hidden', background: '#1C1C1C', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {story.avatarUrl || story.authorAvatarUrl
+                    ? <img src={story.avatarUrl || story.authorAvatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : <span style={{ fontSize: 20, fontWeight: 700, color: '#F5F5F5' }}>{(story.username || story.authorAvatar || '?').charAt(0).toUpperCase()}</span>
+                  }
+                </div>
               </div>
+              <span style={{ fontSize: 11, color: '#F5F5F5', textAlign: 'center', maxWidth: 68, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {story.username || story.authorAvatar}
+              </span>
             </div>
-            <span style={{ fontSize: 11, color: '#F5F5F5', textAlign: 'center', maxWidth: 68, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {story.username}
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </>
   );

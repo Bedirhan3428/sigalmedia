@@ -192,7 +192,7 @@ export default function Feed() {
   };
 
   return (
-    <div className="page" style={{ height: '100vh', overflowY: 'auto' }}>
+    <div className="page">
       {/* Header */}
       <header className="ig-header">
         <Logo />

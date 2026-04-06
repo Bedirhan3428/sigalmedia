@@ -8,6 +8,8 @@ import {
 import { API_URL } from '../apiConfig';
 import { renderWithHashtags } from '../utils/renderWithHashtags.jsx';
 import MediaCarousel from './MediaCarousel';
+import useAnalytics from '../hooks/useAnalytics';
+import { useStories } from '../context/StoryContext';
 
 // ─── Time helper ──────────────────────────────────────────────────────────────
 function timeAgo(date) {
@@ -20,12 +22,19 @@ function timeAgo(date) {
 }
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
-function PostAvatar({ username, avatarUrl, size = 30, hasStory = true, onClick }) {
+function PostAvatar({ userId, username, avatarUrl, size = 30, onClick }) {
+  const { getStoryStatus } = useStories();
+  const status = getStoryStatus(userId); // 'active', 'viewed', 'none'
   const first = (username || '?').charAt(0).toUpperCase();
+
+  const ringClass = status === 'active' ? 'post-avatar-ring--active' 
+                   : status === 'viewed' ? 'post-avatar-ring--viewed' 
+                   : 'post-avatar-ring--none';
+
   return (
     <button className="post-avatar-btn" onClick={onClick} style={{ flexShrink: 0 }}>
-      <div className={`post-avatar-ring ${hasStory ? '' : 'post-avatar-ring--no-story'}`}
-           style={{ width: size + 6, height: size + 6 }}>
+      <div className={`post-avatar-ring ${ringClass}`}
+           style={{ width: size + (status !== 'none' ? 6 : 0), height: size + (status !== 'none' ? 6 : 0) }}>
         {avatarUrl
           ? <img src={avatarUrl} alt={username} className="post-avatar-img"
                  style={{ width: size, height: size }} />
@@ -249,6 +258,8 @@ export default function PostCard({
 }) {
   const navigate        = useNavigate();
   const videoRef        = useRef(null);
+  const cardRef         = useRef(null);
+  const { trackEvent }  = useAnalytics();
 
   const isOwn           = post.authorId === deviceId;
   const initLiked       = likedTweetIds.includes(post._id?.toString());
@@ -305,6 +316,38 @@ export default function PostCard({
     };
   }, [isVideo, isMulti]);
 
+  // ─── Analytics İzleme (Görüntüleme & Süre) ──────────────────────────────────
+  const viewStartTime = useRef(null);
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        viewStartTime.current = Date.now();
+      } else {
+        if (viewStartTime.current) {
+          const duration = (Date.now() - viewStartTime.current) / 1000;
+          if (duration > 1) { // Sadece 1 saniyeden uzun süren bakışları kaydet
+            trackEvent(isVideo ? 'reel_watch' : 'view', post._id, 'post', { duration });
+          }
+          viewStartTime.current = null;
+        }
+      }
+    }, { threshold: 0.5 });
+
+    observer.observe(el);
+    return () => {
+      if (viewStartTime.current) {
+        const duration = (Date.now() - viewStartTime.current) / 1000;
+        if (duration > 1) {
+          trackEvent(isVideo ? 'reel_watch' : 'view', post._id, 'post', { duration });
+        }
+      }
+      observer.disconnect();
+    };
+  }, [trackEvent, post._id, isVideo]);
+
   if ((isSuspended || isRemoved) && !isOwn) return null;
 
   // ─── Çift Tıklama Mantığı ───────────────────────────────────────────────────
@@ -337,6 +380,7 @@ export default function PostCard({
       if (!liked && !isOwn) {
         setLiked(true);
         setLikes(l => l + 1);
+        trackEvent('like', post._id, 'post');
         fetch(`${API_URL}/api/like/${post._id}`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ deviceId }),
@@ -350,6 +394,7 @@ export default function PostCard({
     const newLiked = !liked;
     setLiked(newLiked);
     setLikes(l => newLiked ? l + 1 : Math.max(0, l - 1));
+    trackEvent(newLiked ? 'like' : 'unlike', post._id, 'post');
     try {
       await fetch(`${API_URL}/api/like/${post._id}`, {
         method: newLiked ? 'POST' : 'DELETE',
@@ -362,6 +407,7 @@ export default function PostCard({
   const handleSave = async () => {
     const newSaved = !saved;
     setSaved(newSaved);
+    if (newSaved) trackEvent('save', post._id, 'post');
     try {
       await fetch(`${API_URL}/api/save/${post._id}`, {
         method: newSaved ? 'POST' : 'DELETE',
@@ -394,6 +440,7 @@ export default function PostCard({
   };
 
   const handleShare = async () => {
+    trackEvent('share', post._id, 'post');
     const url = `https://sigalmedia.site/post-detail?id=${post._id}`;
     if (navigator.share) {
       try { await navigator.share({ title: 'Şigal Medya', text: post.content || '', url }); return; }
@@ -436,10 +483,11 @@ export default function PostCard({
         />
       )}
 
-      <article className="post-card" style={{ opacity: deleting ? 0.4 : 1 }}>
+      <article className="post-card" ref={cardRef} style={{ opacity: deleting ? 0.4 : 1 }}>
         {/* Header */}
         <div className="post-header">
           <PostAvatar
+            userId={post.authorId}
             username={post.authorAvatar}
             avatarUrl={post.authorAvatarUrl}
             onClick={goToProfile}
@@ -456,18 +504,30 @@ export default function PostCard({
 
         {/* Media */}
         <div
-          className="post-media post-media--square"
+          className="post-media post-media--dynamic"
           style={{ position: 'relative', WebkitUserSelect: 'none', userSelect: 'none', outline: 'none' }}
           onContextMenu={e => e.preventDefault()}
-          onTouchEnd={handleMediaTap}
+          onTouchEnd={(e) => {
+            if (isVideo) {
+                const time = videoRef.current?.currentTime || 0;
+                navigate(`/reels?id=${post._id}`, { state: { initialPost: post, startTime: time } });
+            } else {
+                handleMediaTap(e);
+            }
+          }}
           onClick={(e) => {
-            if (e.detail > 0 && !('ontouchstart' in window)) handleMediaTap(e);
+            if (isVideo) {
+                const time = videoRef.current?.currentTime || 0;
+                navigate(`/reels?id=${post._id}`, { state: { initialPost: post, startTime: time } });
+            } else {
+                if (e.detail > 0 && !('ontouchstart' in window)) handleMediaTap(e);
+            }
           }}
         >
           {isMulti ? (
             <MediaCarousel 
               media={post.media} 
-              aspectRatio={1} 
+              aspectRatio={null} 
               onDoubleTap={handleMediaTap}
             />
           ) : post.imageUrl && !isVideo ? (
@@ -490,7 +550,7 @@ export default function PostCard({
                   });
                 }}
                 onPause={() => setPlaying(false)}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }}
+                style={{ width: '100%', height: 'auto', display: 'block', background: '#000' }}
               />
               {/* SES BUTONU (DOKUNMA YALITIMI EKLENDI) */}
               <button
@@ -608,6 +668,13 @@ export default function PostCard({
           <button className="post-view-comments" onClick={() => setShowComments(v => !v)}>
             {showComments ? 'Yorumları gizle' : `${post.commentCount} yorumun tümünü gör`}
           </button>
+        )}
+
+        {/* View Count */}
+        {(post.viewCount || 0) > 0 && (
+          <div style={{ fontSize: 13, color: 'var(--text-3)', padding: '0 14px', marginBottom: 2 }}>
+            {post.viewCount.toLocaleString('tr-TR')} görüntülenme
+          </div>
         )}
 
         {/* Time */}
