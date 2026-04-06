@@ -323,6 +323,128 @@ function AllTweetRow({ tweet, user, onDeleted }) {
 }
 
 // ─── Audit Log Satırı ─────────────────────────────────────────────────────
+
+// ─── Pending (Onay Bekleyen) Tweet Satırı ─────────────────────────────────
+function PendingRow({ tweet, user, onAction }) {
+    const [loading, setLoading] = useState('');
+    const [showDeleteDlg, setShowDeleteDlg] = useState(false);
+
+    const handleApprove = async () => {
+        setLoading('approve');
+        try {
+            const headers = await adminHeaders(user);
+            const res = await fetch(`${API_URL}/api/admin/decision/${tweet._id}`, {
+                method: 'POST', headers,
+                body: JSON.stringify({ decision: 'active', reason: 'Moderatör onayı.' }),
+            });
+            if (res.ok) onAction(tweet._id, 'active');
+        } catch (err) { console.error(err); }
+        finally { setLoading(''); }
+    };
+
+    const handleReject = async (reason) => {
+        setShowDeleteDlg(false);
+        setLoading('reject');
+        try {
+            const headers = await adminHeaders(user);
+            const res = await fetch(`${API_URL}/api/admin/decision/${tweet._id}`, {
+                method: 'POST', headers,
+                body: JSON.stringify({ decision: 'removed', reason: reason || 'Topluluk kurallarına aykırı.' }),
+            });
+            if (res.ok) onAction(tweet._id, 'removed');
+        } catch (err) { console.error(err); }
+        finally { setLoading(''); }
+    };
+
+    return (
+        <>
+            {showDeleteDlg && <DeleteReasonModal onConfirm={handleReject} onCancel={() => setShowDeleteDlg(false)} />}
+            <div style={{
+                background: '#0d0d10', border: '1px solid rgba(245,158,11,0.2)',
+                borderRadius: '12px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px',
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {tweet.authorAvatarUrl
+                            ? <img src={tweet.authorAvatarUrl} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', border: '1px solid #27272a' }} />
+                            : <div style={{
+                                width: 28, height: 28, borderRadius: '50%', background: '#18181b',
+                                border: '1px solid #27272a', display: 'flex', alignItems: 'center',
+                                justifyContent: 'center', fontSize: '12px', fontWeight: 700, color: '#f59e0b',
+                            }}>{tweet.authorAvatar?.charAt(0)?.toUpperCase() || '?'}</div>
+                        }
+                        <div>
+                            <p style={{ fontSize: '12px', fontWeight: 600, color: '#e4e4e7', margin: 0 }}>{tweet.authorAvatar || 'Anonim'}</p>
+                            <p style={{ fontSize: '10px', color: '#52525b', margin: 0, fontFamily: "'DM Mono', monospace" }}>
+                                {new Date(tweet.createdAt).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                        </div>
+                    </div>
+                    <div style={{
+                        padding: '3px 8px', borderRadius: '999px',
+                        background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)',
+                    }}>
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#f59e0b', fontFamily: "'DM Mono', monospace" }}>
+                            ⏳ PENDING
+                        </span>
+                    </div>
+                </div>
+
+                {tweet.content && (
+                    <p style={{
+                        fontSize: '13px', color: '#a1a1aa', lineHeight: 1.55, margin: 0,
+                        padding: '10px 12px', background: '#18181b', borderRadius: '8px',
+                        borderLeft: '2px solid rgba(245,158,11,0.4)', wordBreak: 'break-word',
+                    }}>
+                        {tweet.content.slice(0, 400)}{tweet.content.length > 400 ? '…' : ''}
+                    </p>
+                )}
+
+                {tweet.imageUrl && (
+                    <img
+                        src={tweet.imageUrl}
+                        alt="Tweet Medyası"
+                        style={{
+                            width: '100%', maxHeight: '220px', objectFit: 'cover',
+                            borderRadius: '8px', border: '1px solid #27272a',
+                        }}
+                    />
+                )}
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                        onClick={handleApprove}
+                        disabled={!!loading}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '5px',
+                            padding: '8px 16px', borderRadius: '8px', flex: 1, justifyContent: 'center',
+                            background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)',
+                            color: '#34d399', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                            opacity: loading && loading !== 'approve' ? 0.5 : 1,
+                        }}
+                    >
+                        {loading === 'approve' ? <Loader2 size={13} className="spin" /> : <CheckCircle size={13} />}
+                        Onayla
+                    </button>
+                    <button
+                        onClick={() => setShowDeleteDlg(true)}
+                        disabled={!!loading}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '5px',
+                            padding: '8px 16px', borderRadius: '8px', flex: 1, justifyContent: 'center',
+                            background: 'rgba(244,63,94,0.1)', border: '1px solid rgba(244,63,94,0.3)',
+                            color: '#fb7185', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                            opacity: loading && loading !== 'reject' ? 0.5 : 1,
+                        }}
+                    >
+                        {loading === 'reject' ? <Loader2 size={13} className="spin" /> : <XCircle size={13} />}
+                        Reddet
+                    </button>
+                </div>
+            </div>
+        </>
+    );
+}
 function AuditLogRow({ entry }) {
     const actionColors = { quarantine: '#fbbf24', removed: '#f43f5e', cleared: '#34d399', suspended: '#f97316', active: '#34d399', sentinel_block: '#a78bfa', audit_error: '#71717a' };
     const color = actionColors[entry.lastAction?.action] || '#71717a';
@@ -946,13 +1068,87 @@ function BotEventsTab({ user }) {
     );
 }
 
+// ─── Analitik Sekmesi ────────────────────────────────────────────────────────
+function AnalyticsTab({ analytics, loading }) {
+    if (loading || !analytics) {
+        return (
+            <div style={{ padding: '40px', textAlign: 'center', color: '#52525b' }}>
+                <Loader2 size={18} className="spin" style={{ margin: '0 auto 10px' }} />
+                <p>Veriler yükleniyor...</p>
+            </div>
+        );
+    }
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                <div style={{ background: '#0d0d10', border: '1px solid #27272a', borderRadius: '12px', padding: '16px' }}>
+                    <p style={{ color: '#a1a1aa', fontSize: '12px', margin: '0 0 4px' }}>Bugün Aktif Kullanıcı</p>
+                    <p style={{ color: '#fff', fontSize: '24px', fontWeight: 800, margin: 0 }}>{analytics.todayActiveUsers}</p>
+                </div>
+                <div style={{ background: '#0d0d10', border: '1px solid #27272a', borderRadius: '12px', padding: '16px' }}>
+                    <p style={{ color: '#a1a1aa', fontSize: '12px', margin: '0 0 4px' }}>Bugünkü Etkileşimler</p>
+                    <p style={{ color: '#fff', fontSize: '24px', fontWeight: 800, margin: 0 }}>{analytics.todayEvents}</p>
+                </div>
+                <div style={{ background: '#0d0d10', border: '1px solid #27272a', borderRadius: '12px', padding: '16px' }}>
+                    <p style={{ color: '#a1a1aa', fontSize: '12px', margin: '0 0 4px' }}>Haftalık Etkileşim</p>
+                    <p style={{ color: '#fff', fontSize: '24px', fontWeight: 800, margin: 0 }}>{analytics.weekEvents}</p>
+                </div>
+            </div>
+
+            <div style={{ background: '#0d0d10', border: '1px solid #27272a', borderRadius: '12px', padding: '16px' }}>
+                <h3 style={{ color: '#fff', fontSize: '14px', margin: '0 0 12px' }}>Aktivite Dağılımı (Son 7 Gün)</h3>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {analytics.actionBreakdown?.map(ab => (
+                        <div key={ab._id} style={{ background: '#18181b', padding: '6px 12px', borderRadius: '6px', fontSize: '12px' }}>
+                            <span style={{ color: '#a1a1aa' }}>{ab._id}: </span>
+                            <span style={{ color: '#fff', fontWeight: 700 }}>{ab.count}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <div style={{ background: '#0d0d10', border: '1px solid #27272a', borderRadius: '12px', padding: '16px' }}>
+                <h3 style={{ color: '#fff', fontSize: '14px', margin: '0 0 12px' }}>En Çok Görüntülenen Gönderiler (Son 7 Gün)</h3>
+                {analytics.topPosts?.length === 0 ? (
+                    <p style={{ color: '#52525b', fontSize: '13px' }}>Yeterli veri yok.</p>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {analytics.topPosts?.map((item, index) => (
+                            <div key={item._id} style={{ display: 'flex', gap: '12px', background: '#18181b', padding: '12px', borderRadius: '8px', alignItems: 'center' }}>
+                                <div style={{ fontSize: '16px', fontWeight: 800, color: '#3f3f46', width: '20px', textAlign: 'center' }}>#{index+1}</div>
+                                {item.tweet?.imageUrl && (
+                                    <img src={item.tweet.imageUrl} alt="" style={{ width: 40, height: 40, borderRadius: '6px', objectFit: 'cover' }} />
+                                )}
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <p style={{ color: '#e4e4e7', fontSize: '12px', fontWeight: 600, margin: '0 0 2px' }}>{item.tweet?.authorAvatar || 'Bilinmiyor'}</p>
+                                    <p style={{ color: '#a1a1aa', fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>
+                                        {item.tweet?.content || <i style={{ color: '#52525b' }}>Medya Gönderisi</i>}
+                                    </p>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                    <p style={{ color: '#10b981', fontSize: '13px', fontWeight: 700, margin: '0 0 2px' }}>{item.views} izlenme</p>
+                                    <p style={{ color: '#71717a', fontSize: '10px', margin: 0 }}>Ort. {Math.round(item.avgDuration || 0)}sn</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 // ─── Ana Dashboard ────────────────────────────────────────────────────────
 export default function AdminDashboard() {
     const user = useAuth();
 
-    const [tab,        setTab]        = useState('quarantine');
+    const [tab,        setTab]        = useState('pending');
     const [stats,      setStats]      = useState(null);
     const [quarantine, setQuarantine] = useState([]);
+    const [pending,    setPending]    = useState([]);
+    const [pendingTotal, setPendingTotal] = useState(0);
+    const [pendingPage,  setPendingPage]  = useState(1);
     const [allTweets,  setAllTweets]  = useState([]);
     const [auditLog,   setAuditLog]   = useState([]);
     const [loading,    setLoading]    = useState(false);
@@ -960,6 +1156,9 @@ export default function AdminDashboard() {
     const [allPage,      setAllPage]      = useState(1);
     const [allTotal,     setAllTotal]     = useState(0);
     const [unauthorized, setUnauthorized] = useState(false);
+    
+    // Analytics
+    const [analytics, setAnalytics] = useState(null);
 
     // ── YENİ: Link ile silme state'leri ──
     const [deleteLink,        setDeleteLink]        = useState('');
@@ -1003,6 +1202,18 @@ export default function AdminDashboard() {
         finally { setLoading(false); }
     }, [user]);
 
+    const fetchPending = useCallback(async (page = 1) => {
+        if (!user) return;
+        setLoading(true);
+        try {
+            const headers = await adminHeaders(user);
+            const res  = await fetch(`${API_URL}/api/admin/pending?limit=20&page=${page}`, { headers });
+            const data = await res.json();
+            if (res.ok) { setPending(data.tweets || []); setPendingTotal(data.total || 0); }
+        } catch {}
+        finally { setLoading(false); }
+    }, [user]);
+
     const fetchAuditLog = useCallback(async () => {
         if (!user) return;
         setLoading(true);
@@ -1015,16 +1226,36 @@ export default function AdminDashboard() {
         finally { setLoading(false); }
     }, [user]);
 
+    const fetchAnalytics = useCallback(async () => {
+        if (!user) return;
+        setLoading(true);
+        try {
+            const headers = await adminHeaders(user);
+            const res  = await fetch(`${API_URL}/api/admin/analytics/overview`, { headers });
+            const data = await res.json();
+            if (res.ok) setAnalytics(data);
+        } catch {}
+        finally { setLoading(false); }
+    }, [user]);
+
     useEffect(() => { fetchStats(); }, [fetchStats]);
     useEffect(() => {
+        if (tab === 'pending')    fetchPending(pendingPage);
         if (tab === 'quarantine') fetchQuarantine();
         if (tab === 'all')        fetchAllTweets(allPage);
         if (tab === 'log')        fetchAuditLog();
+        if (tab === 'analytics')  fetchAnalytics();
     }, [tab]);
 
     const handleAction = (tweetId, decision) => {
         if (decision === 'reloaded') { fetchQuarantine(); return; }
         setQuarantine(prev => prev.filter(t => t._id !== tweetId));
+        fetchStats();
+    };
+
+    const handlePendingAction = (tweetId, decision) => {
+        setPending(prev => prev.filter(t => t._id !== tweetId));
+        setPendingTotal(prev => Math.max(0, prev - 1));
         fetchStats();
     };
 
@@ -1079,12 +1310,14 @@ export default function AdminDashboard() {
     };
 
     const TABS = [
-        { id: 'quarantine', label: 'Quarantine',  icon: ShieldAlert, badge: (stats?.tweets?.quarantine || 0) + (stats?.tweets?.suspended || 0) },
-        { id: 'all',        label: 'All Tweets',  icon: List,        badge: 0 },
-        { id: 'log',        label: 'Audit Log',   icon: FileText,    badge: 0 },
+        { id: 'pending',    label: 'Onay Bekleyen', icon: Clock,       badge: stats?.tweets?.pending || 0 },
+        { id: 'quarantine', label: 'Quarantine',    icon: ShieldAlert, badge: (stats?.tweets?.quarantine || 0) + (stats?.tweets?.suspended || 0) },
+        { id: 'all',        label: 'All Tweets',    icon: List,        badge: 0 },
+        { id: 'log',        label: 'Audit Log',     icon: FileText,    badge: 0 },
         { id: 'bots',         label: 'Bot Örnekleri', icon: Bot,       badge: 0 },
         { id: 'events',       label: 'Takvim',        icon: Calendar,  badge: 0 },
         { id: 'bots-manage',  label: 'Bot Yönetimi',  icon: Power,     badge: 0 },
+        { id: 'analytics',    label: 'Analitik',      icon: BarChart3, badge: 0 },
     ];
 
     if (unauthorized) {
@@ -1119,7 +1352,7 @@ export default function AdminDashboard() {
                 </div>
                 <div style={{ marginLeft: 'auto' }}>
                     <button
-                        onClick={() => { fetchStats(); if (tab === 'quarantine') fetchQuarantine(); else if (tab === 'all') fetchAllTweets(allPage); else if (tab === 'log') fetchAuditLog(); }}
+                        onClick={() => { fetchStats(); if (tab === 'pending') fetchPending(pendingPage); else if (tab === 'quarantine') fetchQuarantine(); else if (tab === 'all') fetchAllTweets(allPage); else if (tab === 'log') fetchAuditLog(); else if (tab === 'analytics') fetchAnalytics(); }}
                         style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px', borderRadius: '8px', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', color: '#818cf8', fontSize: '12px', cursor: 'pointer' }}
                     >
                         <RefreshCw size={13} /> Yenile
@@ -1193,6 +1426,7 @@ export default function AdminDashboard() {
                 {stats && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '20px' }}>
                         <StatCard icon={FileText}    label="Toplam Tweet"     value={stats.tweets?.total}      color="#6366f1" />
+                        <StatCard icon={Clock}       label="Onay Bekleyen"    value={stats.tweets?.pending}    color="#f59e0b" sub={stats.tweets?.pending > 0 ? 'İncelenmeli!' : 'Temiz'} />
                         <StatCard icon={ShieldAlert} label="İnceleme"         value={(stats.tweets?.quarantine || 0) + (stats.tweets?.suspended || 0)} color="#fbbf24" sub={(stats.tweets?.suspended || 0) > 0 ? `${stats.tweets?.suspended} askıda` : 'Temiz'} />
                         <StatCard icon={PauseCircle} label="Askıya Alınan"    value={stats.tweets?.suspended}  color="#f97316" />
                         <StatCard icon={ShieldCheck} label="Cleared"          value={stats.tweets?.cleared}    color="#34d399" />
@@ -1232,11 +1466,39 @@ export default function AdminDashboard() {
                     <BotEventsTab user={user} />
                 ) : tab === 'bots-manage' ? (
                     <BotsManagementTab user={user} />
+                ) : tab === 'analytics' ? (
+                    <AnalyticsTab analytics={analytics} loading={loading} />
                 ) : loading ? (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px', gap: '10px', color: '#52525b' }}>
                         <Loader2 size={18} className="spin" />
                         <span style={{ fontSize: '13px' }}>Yükleniyor...</span>
                     </div>
+                ) : tab === 'pending' ? (
+                    pending.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '40px', color: '#52525b' }}>
+                            <CheckCircle size={32} color="#34d399" style={{ margin: '0 auto 12px' }} />
+                            <p style={{ fontSize: '14px', fontWeight: 600, color: '#34d399' }}>Onay bekleyen gönderi yok</p>
+                            <p style={{ fontSize: '12px', color: '#52525b', marginTop: '4px' }}>Tüm gönderiler incelendi!</p>
+                        </div>
+                    ) : (
+                        <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                <span style={{ fontSize: '12px', color: '#52525b', fontFamily: "'DM Mono', monospace" }}>{pendingTotal} gönderi onay bekliyor</span>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                {pending.map(tweet => (
+                                    <PendingRow key={tweet._id} tweet={tweet} user={user} onAction={handlePendingAction} />
+                                ))}
+                            </div>
+                            {pendingTotal > 20 && (
+                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '16px' }}>
+                                    <button disabled={pendingPage === 1} onClick={() => { const p = pendingPage - 1; setPendingPage(p); fetchPending(p); }} style={{ padding: '6px 14px', borderRadius: '8px', cursor: pendingPage === 1 ? 'not-allowed' : 'pointer', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', color: '#818cf8', fontSize: '12px', opacity: pendingPage === 1 ? 0.4 : 1 }}>← Önceki</button>
+                                    <span style={{ padding: '6px 10px', fontSize: '12px', color: '#52525b', fontFamily: "'DM Mono', monospace" }}>{pendingPage} / {Math.ceil(pendingTotal / 20)}</span>
+                                    <button disabled={pendingPage >= Math.ceil(pendingTotal / 20)} onClick={() => { const p = pendingPage + 1; setPendingPage(p); fetchPending(p); }} style={{ padding: '6px 14px', borderRadius: '8px', cursor: pendingPage >= Math.ceil(pendingTotal / 20) ? 'not-allowed' : 'pointer', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', color: '#818cf8', fontSize: '12px', opacity: pendingPage >= Math.ceil(pendingTotal / 20) ? 0.4 : 1 }}>Sonraki →</button>
+                                </div>
+                            )}
+                        </div>
+                    )
                 ) : tab === 'quarantine' ? (
                     quarantine.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '40px', color: '#52525b' }}>

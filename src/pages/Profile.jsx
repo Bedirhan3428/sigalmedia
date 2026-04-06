@@ -50,7 +50,7 @@ function MiniAvatar({ username, avatarUrl, size = 44 }) {
 
 function BottomSheet({ children, onClose }) {
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+    <div style={{ position: 'fixed', inset: 0, zIndex: 2500, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
          onClick={onClose}>
       <div style={{ width: '100%', maxWidth: 470, background: '#121212', border: '1px solid #262626', borderRadius: '16px 16px 0 0', paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
            onClick={e => e.stopPropagation()}>
@@ -107,7 +107,7 @@ function EditProfileModal({ profile, onClose, onSave, onEditAvatar }) {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 600, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+    <div style={{ position: 'fixed', inset: 0, zIndex: 2500, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
          onClick={onClose}>
       <div style={{ width: '100%', maxWidth: 470, background: '#121212', border: '1px solid #262626', borderRadius: '16px 16px 0 0', paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
            onClick={e => e.stopPropagation()}>

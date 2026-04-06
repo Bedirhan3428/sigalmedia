@@ -6,7 +6,7 @@ const getCdnUrl = (url) => {
   return url.replace('https://firebasestorage.googleapis.com', 'https://sigal-cdn.abimer2350.workers.dev');
 };
 
-export default function MediaCarousel({ media = [], aspectRatio = 1, showIndicator = true, onDoubleTap }) {
+export default function MediaCarousel({ media = [], aspectRatio = null, showIndicator = true, onDoubleTap }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [muted, setMuted] = useState(true);
   const [playing, setPlaying] = useState({}); // { index: boolean }
@@ -96,7 +96,7 @@ export default function MediaCarousel({ media = [], aspectRatio = 1, showIndicat
               width: '100%',
               scrollSnapAlign: 'start',
               position: 'relative',
-              aspectRatio: aspectRatio,
+              aspectRatio: aspectRatio || 'auto',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

@@ -177,12 +177,24 @@ html, body, #root {
 }
 
 .post-avatar-ring {
-  width: 36px; height: 36px; border-radius: 50%;
-  background: var(--story); padding: 2px;
+  border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
 }
-.post-avatar-ring--no-story {
-  background: var(--border); padding: 1.5px;
+
+.post-avatar-ring--active {
+  background: var(--story);
+  padding: 2px;
+}
+
+.post-avatar-ring--viewed {
+  background: #363636;
+  padding: 1.5px;
+}
+
+.post-avatar-ring--none {
+  background: transparent;
+  padding: 0;
 }
 
 .post-avatar-img {
@@ -229,12 +241,20 @@ html, body, #root {
   background: var(--surface-2); overflow: hidden;
 }
 
+.post-media--dynamic { 
+  aspect-ratio: auto; 
+  min-height: 200px; 
+  max-height: 700px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+}
 .post-media--square { aspect-ratio: 1; }
 .post-media--portrait { aspect-ratio: 4/5; }
 .post-media--landscape { aspect-ratio: 16/9; }
 
 .post-media img, .post-media video {
-  width: 100%; height: 100%; object-fit: cover; display: block;
+  width: 100%; height: auto; max-height: 100%; object-fit: contain; display: block;
 }
 
 .post-media-overlay {
@@ -1157,7 +1177,7 @@ html, body, #root {
 
 /* â”€â”€ MODALS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .modal-backdrop {
-  position: fixed; inset: 0; z-index: 500;
+  position: fixed; inset: 0; z-index: 2500;
   background: rgba(0,0,0,0.7);
   display: flex; align-items: flex-end; justify-content: center;
   backdrop-filter: blur(4px);

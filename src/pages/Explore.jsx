@@ -129,7 +129,7 @@ export default function Explore() {
   // ─── DETAY / AKIŞ GÖRÜNÜMÜ ────────────────────────────────────────────────
   if (selectedPostId) {
     return (
-      <div className="page" style={{ height: '100dvh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <div className="page" style={{ display: 'flex', flexDirection: 'column' }}>
         <div style={{ 
           padding: '12px 16px', borderBottom: '1px solid var(--border)', 
           display: 'flex', alignItems: 'center', gap: 16, 
@@ -158,7 +158,7 @@ export default function Explore() {
 
   // ─── GRID (KEŞFET) GÖRÜNÜMÜ ───────────────────────────────────────────────
   return (
-    <div className="page" style={{ height: '100dvh', overflowY: 'auto' }}>
+    <div className="page">
       <div style={{
         position: 'sticky', top: 0, zIndex: 99,
         background: 'var(--bg)', borderBottom: '1px solid var(--border)',
