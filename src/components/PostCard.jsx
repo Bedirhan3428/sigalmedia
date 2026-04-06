@@ -259,6 +259,9 @@ export default function PostCard({
   const navigate        = useNavigate();
   const videoRef        = useRef(null);
   const cardRef         = useRef(null);
+  const touchStartRef   = useRef({ x: 0, y: 0 });
+  const tapTimerRef     = useRef(null);
+  const lastTap         = useRef(0);
   const { trackEvent }  = useAnalytics();
 
   const isOwn           = post.authorId === deviceId;
@@ -350,42 +353,109 @@ export default function PostCard({
 
   if ((isSuspended || isRemoved) && !isOwn) return null;
 
-  // ─── Çift Tıklama Mantığı ───────────────────────────────────────────────────
-  const lastTap = useRef(0);
+  // ─── Tıklama ve Dokunma Mantığı ───────────────────────────────────────────
   const [heartPos, setHeartPos] = useState({ x: '50%', y: '50%' });
 
-  const handleMediaTap = (e) => {
-    e.preventDefault(); 
+  const handleMediaTouchStart = (e) => {
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleMediaTouchEnd = (e) => {
+    // Dokunma sonu verilerini al
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+
+    const dx = Math.abs(touch.clientX - touchStartRef.current.x);
+    const dy = Math.abs(touch.clientY - touchStartRef.current.y);
+
+    // 1. Kaydırma Eşiği (Scroll Detection)
+    // Eğer kullanıcı parmağını 10px'den fazla oynatmışsa, bu bir kaydırmadır.
+    if (dx > 10 || dy > 10) {
+      if (tapTimerRef.current) {
+        clearTimeout(tapTimerRef.current);
+        tapTimerRef.current = null;
+      }
+      return;
+    }
+
+    // 2. Çift Tıklama (Double Tap) Kontrolü
     const now = Date.now();
-    const isDouble = now - lastTap.current < 300;
+    const isDouble = (now - lastTap.current) < 300;
     lastTap.current = now;
 
     if (isDouble) {
-      let x = '50%', y = '50%';
-      if (e?.currentTarget) {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const clientX = e.changedTouches?.[0]?.clientX ?? e.clientX;
-        const clientY = e.changedTouches?.[0]?.clientY ?? e.clientY;
-        x = ((clientX - rect.left) / rect.width  * 100).toFixed(1) + '%';
-        y = ((clientY - rect.top)  / rect.height * 100).toFixed(1) + '%';
+      // Çift tıklandı: Navigasyonu iptal et ve beğenme animasyonunu tetikle
+      if (tapTimerRef.current) {
+        clearTimeout(tapTimerRef.current);
+        tapTimerRef.current = null;
       }
-      setHeartPos({ x, y });
-      
-      setDoubleTapHeart(false);
-      requestAnimationFrame(() => {
-        setDoubleTapHeart(true);
-        setTimeout(() => setDoubleTapHeart(false), 800);
-      });
-      
-      if (!liked && !isOwn) {
-        setLiked(true);
-        setLikes(l => l + 1);
-        trackEvent('like', post._id, 'post');
-        fetch(`${API_URL}/api/like/${post._id}`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ deviceId }),
-        }).catch(() => {});
+      triggerLikeEffect(e);
+    } else {
+      // Tek tıklandı: Başka bir tık gelip gelmeyeceğini (çift tık) bekle
+      // Eğer 250ms içinde ikinci tık gelmezse navigasyonu başlat
+      tapTimerRef.current = setTimeout(() => {
+        tapTimerRef.current = null;
+        if (isVideo && !isMulti) {
+          const time = videoRef.current?.currentTime || 0;
+          navigate(`/reels?id=${post._id}`, { state: { initialPost: post, startTime: time } });
+        }
+      }, 250);
+    }
+  };
+
+  const triggerLikeEffect = (e) => {
+    let x = '50%', y = '50%';
+    if (e?.currentTarget) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      // Hem Touch hem Mouse eventleri için pozisyon al
+      const clientX = e.changedTouches?.[0]?.clientX ?? e.clientX;
+      const clientY = e.changedTouches?.[0]?.clientY ?? e.clientY;
+      x = ((clientX - rect.left) / rect.width  * 100).toFixed(1) + '%';
+      y = ((clientY - rect.top)  / rect.height * 100).toFixed(1) + '%';
+    }
+    setHeartPos({ x, y });
+    
+    setDoubleTapHeart(false);
+    requestAnimationFrame(() => {
+      setDoubleTapHeart(true);
+      setTimeout(() => setDoubleTapHeart(false), 800);
+    });
+    
+    if (!liked && !isOwn) {
+      setLiked(true);
+      setLikes(l => l + 1);
+      trackEvent('like', post._id, 'post');
+      fetch(`${API_URL}/api/like/${post._id}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId }),
+      }).catch(() => {});
+    }
+  };
+
+  // Masaüstü (Mouse) için tıklama yönetimi
+  const handleMediaClick = (e) => {
+    // Dokunmatik bir cihazdaysak click eventini burada işlemeyelim (touchEnd hallediyor)
+    if ('ontouchstart' in window) return;
+
+    const now = Date.now();
+    const isDouble = (now - lastTap.current) < 300;
+    lastTap.current = now;
+
+    if (isDouble) {
+      if (tapTimerRef.current) {
+        clearTimeout(tapTimerRef.current);
+        tapTimerRef.current = null;
       }
+      triggerLikeEffect(e);
+    } else {
+      tapTimerRef.current = setTimeout(() => {
+        tapTimerRef.current = null;
+        if (isVideo && !isMulti) {
+          const time = videoRef.current?.currentTime || 0;
+          navigate(`/reels?id=${post._id}`, { state: { initialPost: post, startTime: time } });
+        }
+      }, 250);
     }
   };
 
@@ -507,28 +577,15 @@ export default function PostCard({
           className="post-media post-media--dynamic"
           style={{ position: 'relative', WebkitUserSelect: 'none', userSelect: 'none', outline: 'none' }}
           onContextMenu={e => e.preventDefault()}
-          onTouchEnd={(e) => {
-            if (isVideo) {
-                const time = videoRef.current?.currentTime || 0;
-                navigate(`/reels?id=${post._id}`, { state: { initialPost: post, startTime: time } });
-            } else {
-                handleMediaTap(e);
-            }
-          }}
-          onClick={(e) => {
-            if (isVideo) {
-                const time = videoRef.current?.currentTime || 0;
-                navigate(`/reels?id=${post._id}`, { state: { initialPost: post, startTime: time } });
-            } else {
-                if (e.detail > 0 && !('ontouchstart' in window)) handleMediaTap(e);
-            }
-          }}
+          onTouchStart={handleMediaTouchStart}
+          onTouchEnd={handleMediaTouchEnd}
+          onClick={handleMediaClick}
         >
           {isMulti ? (
             <MediaCarousel 
               media={post.media} 
               aspectRatio={null} 
-              onDoubleTap={handleMediaTap}
+              onDoubleTap={triggerLikeEffect}
             />
           ) : post.imageUrl && !isVideo ? (
             <img src={post.imageUrl} alt="" loading="lazy" />
