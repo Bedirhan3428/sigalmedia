@@ -197,13 +197,9 @@ const ReelCard = React.memo(function ReelCard({ post, isActive, isAppVisible, is
     if (!vid) return;
 
     if (isActive && isAppVisible && !paused) {
-      document.querySelectorAll('video').forEach(v => {
-        if (v !== vid && !v.paused) {
-          v.pause();
-          v.currentTime = 0;
-        }
-      });
-
+      // Her ReelCard kendi isActive durumuna göre kendini durdurduğu için 
+      // burada tüm DOM'u taramak (querySelectorAll) gereksizdir ve performans kaybına (Violation) yol açar.
+      
       const playPromise = vid.play();
       if (playPromise !== undefined) {
         playPromise.then(() => {

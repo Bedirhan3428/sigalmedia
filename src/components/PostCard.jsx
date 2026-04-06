@@ -544,10 +544,11 @@ export default function PostCard({
                 onEnded={() => setPlaying(false)}
                 onPlay={(e) => {
                   setPlaying(true);
-                  // Diğer açık videoları durdur
-                  document.querySelectorAll('video').forEach(v => {
-                    if (v !== e.target && !v.paused) v.pause();
-                  });
+                  // Global referans ile sadece bir önceki videoyu durdur (Performans Optimizasyonu)
+                  if (window._lastPlayingVideo && window._lastPlayingVideo !== e.target) {
+                    try { window._lastPlayingVideo.pause(); } catch(err) {}
+                  }
+                  window._lastPlayingVideo = e.target;
                 }}
                 onPause={() => setPlaying(false)}
                 style={{ width: '100%', height: 'auto', display: 'block', background: '#000' }}
