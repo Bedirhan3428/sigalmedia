@@ -54,7 +54,7 @@ export default function VerifyHandler() {
 
       if (data.success) {
         setStatus('Mail başarıyla doğrulandı! Yönlendiriliyorsun...');
-        setTimeout(() => navigate('/'), 2000);
+        setTimeout(() => navigate('/feed'), 2000);
       } else {
         setStatus(data.error || 'Doğrulama başarısız oldu.');
       }
